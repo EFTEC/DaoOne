@@ -1,7 +1,7 @@
 {
     "name": "eftec/daoone",
     "description": "Data Access Object wrapper in a single Class",
-    "version": "2.3",
+    "version": "2.6",
     "type": "library",
     "keywords": [
         "dao",
@@ -18,10 +18,11 @@
     "minimum-stability": "beta",
     "license": "MIT",
     "require": {
+        "php": "^5.6 || ^7.0"
     },
     "autoload": {
       "psr-4": {
-        "eftec\\": "vendor/eftec/"
+        "eftec\\": "lib/"
       }
     }
 }
