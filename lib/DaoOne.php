@@ -26,10 +26,22 @@ class DaoOne
     var $transactionOpen;
     /** @var bool if the database is in READ ONLY mode or not. If true then we must avoid to write in the database. */
     var $readonly=false;
-    /** @var string full filename of the log file */
+    /** @var string full filename of the log file. If it's empty then it doesn't store a log file. The log file is limited to 1mb */
     var $logFile="";
-
+    /** @var string last query executed */
     var $lastQuery;
+
+
+    //<editor-fold desc="encryption fields">
+    /** @var bool Encryption enabled */
+    var $encEnabled=false;
+    /** @var string Encryption password */
+    var $encPassword='';
+    /** @var string Encryption salt */
+    var $encSalt='';
+    /** @var string Encryption method, See http://php.net/manual/en/function.openssl-get-cipher-methods.php */
+    var $encMethod='';
+    //</editor-fold>
 
     /**
      * ClassUtilDB constructor.
@@ -50,6 +62,25 @@ class DaoOne
 
 
     }
+
+    /**
+     * @param string $password
+     * @param string $salt
+     * @param string $encMethod . Example : AES-128-CTR See http://php.net/manual/en/function.openssl-get-cipher-methods.php
+     * @throws Exception
+     */
+    public function setEncryption($password, $salt, $encMethod) {
+        if (!extension_loaded('openssl')) {
+            $this->encEnabled=false;
+            throw new Exception("OpenSSL not loaded, encryption disabled");
+        } else {
+            $this->encEnabled=true;
+            $this->encPassword=$password;
+            $this->encSalt=$salt;
+            $this->encMethod=$encMethod;
+        }
+    }
+
     // if the database is in read only mode.
     public function readonly() {
         return $this->readonly;
@@ -268,6 +299,30 @@ class DaoOne
 
     }
 
+
+    //<editor-fold desc="Encryption">
+    function encrypt($data)
+    {
+        if (!$this->encEnabled) return $data; // no encryption
+        $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length($this->encMethod));
+        $encrypted_string = bin2hex($iv) . openssl_encrypt($this->encSalt.$data,$this->encMethod, $this->encPassword, 0, $iv);
+        return $encrypted_string;
+    }
+    function decrypt($data)
+    {
+        if (!$this->encEnabled) return $data; // no encryption
+        $iv_strlen = 2  * openssl_cipher_iv_length($this->encMethod);
+        if(preg_match("/^(.{" . $iv_strlen . "})(.+)$/", $data, $regs)) {
+            list(, $iv, $crypted_string) = $regs;
+            $decrypted_string = openssl_decrypt($crypted_string, $this->encMethod, $this->encPassword, 0, hex2bin($iv));
+            return substr($decrypted_string,strlen($this->encSalt));
+        } else {
+            return false;
+        }
+    }
+    //</editor-fold>
+
+
     //</editor-fold>
     /**
      * Write a log line for debug
@@ -283,8 +338,8 @@ class DaoOne
         } else {
             $txtW=$txt;
         }
-        if ($fz>100000) {
-            // mas de 100kb = reducirlo a cero.
+        if ($fz>1048576) {
+            // mas de 1mb = reducirlo a cero.
             $fp = @fopen($this->logFile, 'w');
         } else {
             $fp = @fopen($this->logFile, 'a');
