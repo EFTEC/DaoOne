@@ -5,6 +5,8 @@ It's a simple wrapper for Mysqli
 
 ## Install (using composer)
 
+Add to composer.json the next requirement, then update composer.
+
 ```json
   {
       "require": {
