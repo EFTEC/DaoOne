@@ -7,7 +7,7 @@ use Exception;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 2.6.1 20180606
+ * @version 2.6.2 20180606
  * @package eftec
  * @author Jorge C.
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -300,21 +300,21 @@ class DaoOne
 
 
     //<editor-fold desc="Encryption">
-    function encrypt($data)
+    public function encrypt($data)
     {
         if (!$this->encEnabled) return $data; // no encryption
         $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length($this->encMethod));
         $encrypted_string = bin2hex($iv) . openssl_encrypt($this->encSalt.$data,$this->encMethod, $this->encPassword, 0, $iv);
-        return $encrypted_string;
+        return urlencode($encrypted_string);
     }
-    function decrypt($data)
+    public function decrypt($data)
     {
         if (!$this->encEnabled) return $data; // no encryption
         $iv_strlen = 2  * openssl_cipher_iv_length($this->encMethod);
         if(preg_match("/^(.{" . $iv_strlen . "})(.+)$/", $data, $regs)) {
             list(, $iv, $crypted_string) = $regs;
             $decrypted_string = openssl_decrypt($crypted_string, $this->encMethod, $this->encPassword, 0, hex2bin($iv));
-            return substr($decrypted_string,strlen($this->encSalt));
+            return urldecode(substr($decrypted_string,strlen($this->encSalt)));
         } else {
             return false;
         }
