@@ -7,7 +7,7 @@ use Exception;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 2.6 20180606
+ * @version 2.6.1 20180606
  * @package eftec
  * @author Jorge C.
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
