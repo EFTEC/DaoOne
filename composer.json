@@ -1,0 +1,28 @@
+{
+    "name": "eftec/daoone",
+    "description": "Data Access Object wrapper in a single Class",
+    "version": "2.3",
+    "type": "library",
+    "keywords": [
+        "dao",
+        "php",
+        "mysqli"
+    ],
+    "homepage": "https://github.com/EFTEC",
+    "authors": [
+        {
+            "name": "Jorge Castro Castillo",
+            "homepage": "https://github.com/EFTEC/"
+        }
+    ],
+    "minimum-stability": "beta",
+    "license": "MIT",
+    "require": {
+    },
+    "autoload": {
+      "psr-4": {
+        "eftec\\": "vendor/eftec/"
+      }
+    }
+}
+
