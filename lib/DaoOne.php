@@ -31,7 +31,6 @@ class DaoOne
     /** @var string last query executed */
     var $lastQuery;
 
-
     //<editor-fold desc="encryption fields">
     /** @var bool Encryption enabled */
     var $encEnabled=false;
@@ -321,7 +320,6 @@ class DaoOne
         }
     }
     //</editor-fold>
-
 
     //</editor-fold>
     /**
