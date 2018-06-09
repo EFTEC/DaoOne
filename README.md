@@ -91,3 +91,7 @@ try {
     $dao->rollback(); // error, transaction cancelled.
 }
 ```   
+
+## Changelist
+
+2.6 first public version
