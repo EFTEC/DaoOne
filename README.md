@@ -95,3 +95,5 @@ try {
 ## Changelist
 
 2.6 first public version
+2.6.3 Fixed transaction. Now a nested transanction is not nested (and returns a false).
+

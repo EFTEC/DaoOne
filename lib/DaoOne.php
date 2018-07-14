@@ -7,7 +7,7 @@ use Exception;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 2.6.2 20180606
+ * @version 2.6.3 20180714
  * @package eftec
  * @author Jorge C.
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -223,18 +223,31 @@ class DaoOne
 
     /**
      * @param int $flag MYSQLI_TRANS_START_READ_ONLY,MYSQLI_TRANS_START_READ_WRITE,MYSQLI_TRANS_START_WITH_CONSISTENT_SNAPSHOT
+     * @return bool
      */
     public function startTransaction($flag=MYSQLI_TRANS_START_READ_WRITE) {
+        if ($this->transactionOpen) return false;
         $this->transactionOpen=true;
         $this->conn1->begin_transaction($flag);
+        return true;
     }
 
+    /**
+     * Commit and close a transaction
+     * @throws Exception
+     */
     public function commit() {
+        if (!$this->transactionOpen) throw new Exception("Transaction not open");
         $this->transactionOpen=false;
         $this->conn1->commit();
     }
+    /**
+     * Rollback and close a transaction
+     * @throws Exception
+     */
 
     public function rollback() {
+        if (!$this->transactionOpen) throw new Exception("Transaction not open");
         $this->transactionOpen=false;
         $this->conn1->rollback();
     }
