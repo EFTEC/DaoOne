@@ -14,6 +14,9 @@ Add to composer.json the next requirement, then update composer.
       }
   }
 ```
+or install it via cli using
+
+> composer require eftec/daoone
 
 ## Install (manually)
 
@@ -94,6 +97,8 @@ try {
 
 ## Changelist
 
-2.6 first public version
-2.6.3 Fixed transaction. Now a nested transanction is not nested (and returns a false).
+* 2.6.4 Better correction of error.
+* 2.6.3 Fixed transaction. Now a nested transanction is not nested (and returns a false).
+* 2.6 first public version
+
 

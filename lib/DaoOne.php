@@ -7,7 +7,7 @@ use Exception;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 2.6.3 20180714
+ * @version 2.6.4 20180915
  * @package eftec
  * @author Jorge C.
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -30,8 +30,12 @@ class DaoOne
     var $logFile="";
     /** @var string last query executed */
     var $lastQuery;
-
+    //<editor-fold desc="date fields">
+    var $dateFormat='aa';
+    //</editor-fold>
     //<editor-fold desc="encryption fields">
+    /** @var string|null Static date (when the date is empty) */
+    static $dateEpoch="2000-01-01 00:00:00.00000";
     /** @var bool Encryption enabled */
     var $encEnabled=false;
     /** @var string Encryption password */
@@ -56,10 +60,7 @@ class DaoOne
         $this->user = $user;
         $this->pwd = $pwd;
         $this->db = $db;
-
         $this->logFile=$logFile;
-
-
     }
 
     /**
@@ -93,12 +94,18 @@ class DaoOne
     {
         mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
         if ($this->conn1!=null) {
+            $this->debugFile("Already connected");
             throw new Exception("Already connected");
         }
-        $this->conn1=new \mysqli($this->server,$this->user,$this->pwd,$this->db);
-
+        try {
+            $this->conn1 = new \mysqli($this->server, $this->user, $this->pwd, $this->db);
+        } catch(Exception $ex) {
+            $this->debugFile("Failed to connect to MySQL:\t" .$ex->getMessage());
+            throw new Exception("Failed to connect to MySQL: " .$ex->getMessage());
+        }
         // Check connection
         if (mysqli_connect_errno()) {
+            $this->debugFile("Failed to connect to MySQL:\t" . mysqli_connect_error());
             throw new Exception("Failed to connect to MySQL: " . mysqli_connect_error());
         }
     }
@@ -113,11 +120,18 @@ class DaoOne
         if ($this->readonly) {
             if (stripos($query,'insert ')===0 || stripos($query,'update ')===0 || stripos($query,'delete ')===0) {
                 // we aren't checking SQL-DCL queries.
+                $this->debugFile("Database is in READ ONLY MODE");
                 throw new Exception("Database is in READ ONLY MODE");
             }
         }
-        $stmt = $this->conn1->prepare($query );
+        try {
+            $stmt = $this->conn1->prepare($query );
+        } catch(Exception $ex) {
+            $this->debugFile("Failed to prepare:\t" .$ex->getMessage());
+            throw new Exception("Failed to prepare: " .$ex->getMessage());
+        }
         if ($stmt===false) {
+            $this->debugFile("Unable to prepare query\t".$this->lastQuery);
             throw new Exception("Unable to prepare query ".$this->lastQuery);
         }
         return $stmt;
@@ -130,9 +144,15 @@ class DaoOne
      * @throws Exception
      */
     public function runQuery($stmt) {
-        $r=$stmt->execute();
+        try {
+            $r = $stmt->execute();
+        } catch(Exception $ex) {
+
+            $this->debugFile("Failed to run query\t" .$ex->getMessage());
+            throw new Exception("Failed to run query: " .$ex->getMessage());
+        }
         if ($r===false) {
-            $this->debugFile("exception query ".$this->lastQuery);
+            $this->debugFile("exception query\t".$this->lastQuery);
             throw new Exception("Unable to run query ".$this->lastQuery);
         }
         return true;
@@ -148,16 +168,18 @@ class DaoOne
         if ($this->readonly) {
             if (stripos($rawSql,'insert ')===0 || stripos($rawSql,'update ')===0 || stripos($rawSql,'delete ')===0) {
                 // we aren't checking SQL-DCL queries. Also, "insert into" is stopped but "  insert into" not.
+                $this->debugFile("Database is in READ ONLY MODE");
                 throw new Exception("Database is in READ ONLY MODE");
             }
         }
         try {
             $r = $this->conn1->query($rawSql);
         } catch(Exception $ex) {
-            $this->debugFile("exception raw ".$rawSql);
+            $this->debugFile("Exception raw\t".$rawSql);
             throw new Exception("Unable to run raw query ".$rawSql);
         }
         if ($r===false) {
+            $this->debugFile("Unable to run raw query\t".$rawSql);
             throw new Exception("Unable to run raw query ".$rawSql);
         }
         return  $r;
@@ -179,6 +201,7 @@ class DaoOne
                     // we aren't checking SQL-DCL queries. Also, "insert into" is stopped but "  insert into" not.
                     $ok=false;
                     if (!$continueOnError) {
+                        $this->debugFile("Database is in READ ONLY MODE");
                         throw new Exception("Database is in READ ONLY MODE");
                     }
                 }
@@ -187,6 +210,7 @@ class DaoOne
             if ($r === false) {
                 $ok=false;
                 if (!$continueOnError) {
+                    $this->debugFile("Unable to run raw query\t" . $this->lastQuery);
                     throw new Exception("Unable to run raw query " . $this->lastQuery);
                 }
             }
@@ -245,7 +269,6 @@ class DaoOne
      * Rollback and close a transaction
      * @throws Exception
      */
-
     public function rollback() {
         if (!$this->transactionOpen) throw new Exception("Transaction not open");
         $this->transactionOpen=false;
@@ -253,66 +276,61 @@ class DaoOne
     }
 
 
-    //<editor-fold desc="date functions">
-
-
+    //<editor-fold desc="Date functions" defaultstate="collapsed" >
     /**
+     * Conver date from php -> mysql
      * @param DateTime $date
      * @return string
      */
     public static function dateTimePHP2Sql($date) {
         // 31/01/2016 20:20:00 --> 2016-01-31 00:00
         if ($date==null) {
-            return "2000-01-01 00:00:00";
+            return DaoOne::$dateEpoch;
         }
         return $date->format('Y-m-d H:i:s');
     }
 
     /**
+     * Convert date from unix -> mysql
      * @param integer $dateNum
      * @return string
      */
     public static function unixtime2Sql($dateNum) {
         // 31/01/2016 20:20:00 --> 2016-01-31 00:00
-
         if ($dateNum==null) {
-            return "2000-01-01 00:00:00.00000";
+            return DaoOne::$dateEpoch;
         }
-
-
         $date2 = new DateTime(date("Y-m-d H:i:s.u", $dateNum));
-
-        // $now = DateTime::createFromFormat('U.u', microtime(true));
-
-        //$now = DateTime::createFromFormat('U.u', microtime(true));
         return  $date2->format('Y-m-d H:i:s.u');
     }
 
     /**
-     * @param $txt
+     * Convert date, from mysql -> php
+     * @param $sqlField
      * @return bool|DateTime
      */
-    public static function dateTimeSql2PHP($txt) {
+    public static function dateTimeSql2PHP($sqlField) {
         // 3  2016-01-31 00:00:00 -> 01/01/2016 00:00:00
-        if ($txt=="") {
-            $txt="2000-01-01 00:00:00";
+        // mysql always returns the date/datetime/timestmamp in ansi format.
+        if ($sqlField=="") {
+            return DaoOne::$dateEpoch;
         }
-        return DateTime::createFromFormat('Y-m-d H:i:s', $txt);
-        /*
-        if (strpos($txt,'.')) {
-            // con microseconds
-            echo $txt;
-            return DateTime::createFromFormat('Y-m-d H:i:s.u', $txt);
+        if (strpos($sqlField,'.')) {
+            // with date with time and microseconds
+            return DateTime::createFromFormat('Y-m-d H:i:s.u', $sqlField);
         } else {
-            echo $txt;
-            return DateTime::createFromFormat('Y-m-d H:i:s', $txt);
+            if (strpos($sqlField,':')) {
+                // date with time
+                return DateTime::createFromFormat('Y-m-d H:i:s', $sqlField);
+            } else {
+                // only date
+                return DateTime::createFromFormat('Y-m-d', $sqlField);
+            }
         }
-        */
-
     }
+    //</editor-fold>
 
-
-    //<editor-fold desc="Encryption">
+    //<editor-fold desc="Encryption functions" defaultstate="collapsed" >
     public function encrypt($data)
     {
         if (!$this->encEnabled) return $data; // no encryption
@@ -334,7 +352,7 @@ class DaoOne
     }
     //</editor-fold>
 
-    //</editor-fold>
+    //<editor-fold desc="Log functions" defaultstate="collapsed" >
     /**
      * Write a log line for debug
      * @param $txt
@@ -349,14 +367,18 @@ class DaoOne
         } else {
             $txtW=$txt;
         }
-        if ($fz>1048576) {
-            // mas de 1mb = reducirlo a cero.
+        if ($fz>10000000) {
+            // mas de 10mb = reducirlo a cero.
             $fp = @fopen($this->logFile, 'w');
         } else {
             $fp = @fopen($this->logFile, 'a');
         }
-        @fwrite($fp, $txtW."\n");
+        $txtW=str_replace("\r\n"," ",$txtW);
+        $txtW=str_replace("\n"," ",$txtW);
+        $now=new DateTime();
+        @fwrite($fp,$now->format('c')."\t".$txtW."\n");
         @fclose($fp);
     }
+    //</editor-fold>
 
 }
