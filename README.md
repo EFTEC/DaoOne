@@ -116,6 +116,49 @@ $results = $dao->select("*")->from("producttype")
     ->toList();   
 ```
 
+### insert($table,$schema,$values)
+Generates a insert command.
+
+Where
+* **$table** = is the name of the table
+* **$schema**= is an array of the style [column,type,column2,type2...] where column is the name of the column and type is i=integer,d=double,s=string,b=blob
+* **$values**= is an array with values.
+
+```php
+$dao->insert("producttype",['idproducttype','i','name','s','type','i'],[1,'cocacola',1]);
+```
+> Generates the query: **insert into productype(idproducttype,name,type) values(?,?,?)** ....
+
+
+### update($$table,$schema,$values,$schemaWhere,$valuesWhere)
+Generates a insert command.
+
+Where
+* **$table** = is the name of the table
+* **$schema**= is an array of the style [column,type,column2,type2...] where column is the name of the column and type is i=integer,d=double,s=string,b=blob
+* **$values**= is an array with values.
+* **$schemaWhere**= is an array of the style [column,type,column2,type2...] where column is the name of the column and type is i=integer,d=double,s=string,b=blob
+* **$valuesWhere**= is an array with values.
+
+```php
+$dao->update("producttype",['name','s','type','i'],[6,'Captain-Crunch',2],['idproducttype','i'],[6]);
+```
+> Generates the query: **update producttype set `name`=?,`type`=? where `idproducttype`=?** ....
+
+### delete($table,$schemaWhere,$valuesWhere)
+Generates a delete command.
+
+Where
+* **$table** = is the name of the table
+* **$schemaWhere**= is an array of the style [column,type,column2,type2...] where column is the name of the column and type is i=integer,d=double,s=string,b=blob
+* **$valuesWhere**= is an array with values.
+```php
+$dao->delete("producttype",['idproducttype','i'],[7]);
+```
+> Generates the query: **delete from producttype where `idproducttype`=?** ....
+
+
+
 ### select($columns)
 Generates a select command.
 ```php
@@ -255,6 +298,7 @@ $results=$dao->toList(); // executes the query
 
 ## Changelist
 
+* 3.2 Insert, Update,Delete
 * 3.0 Major overhaul. It adds Query Builder features.
 * 2.6.4 Better correction of error.
 * 2.6.3 Fixed transaction. Now a nested transanction is not nested (and returns a false).

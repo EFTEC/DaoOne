@@ -7,7 +7,7 @@ use Exception;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 3.0 20180915
+ * @version 3.2 20180916
  * @package eftec
  * @author Jorge C.
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -163,7 +163,7 @@ class DaoOne
             $r = $stmt->execute();
         } catch(Exception $ex) {
 
-            $this->debugFile("Failed to run query\t" .$ex->getMessage());
+            $this->debugFile("Failed to run query\t" .$this->lastQuery." Cause:".$ex->getMessage());
             throw new Exception("Failed to run query: " .$ex->getMessage());
         }
         if ($r===false) {
@@ -190,16 +190,17 @@ class DaoOne
             }
         }
         if ($param==null) {
-        try {
-            $r = $this->conn1->query($rawSql);
-        } catch(Exception $ex) {
-            $this->debugFile("Exception raw\t".$rawSql);
-            throw new Exception("Unable to run raw query ".$rawSql);
-        }
-        if ($r===false) {
-            $this->debugFile("Unable to run raw query\t".$rawSql);
-            throw new Exception("Unable to run raw query ".$rawSql);
-        }
+
+            try {
+                $r = $this->conn1->query($rawSql);
+            } catch(Exception $ex) {
+                $this->debugFile("Exception raw\t".$rawSql);
+                throw new Exception("Unable to run raw query ".$rawSql);
+            }
+            if ($r===false) {
+                $this->debugFile("Unable to run raw query\t".$rawSql);
+                throw new Exception("Unable to run raw query ".$rawSql);
+            }
             return $r;
         }
         // the whery has parameters.
@@ -226,6 +227,7 @@ class DaoOne
         }
         $this->runQuery($stmt);
         $rows = $stmt->get_result();
+        $stmt->close();
         if ($returnArray && $rows) {
             return $rows->fetch_all(MYSQLI_ASSOC);
         } else {
@@ -399,6 +401,35 @@ class DaoOne
 
     /**
      * @param $sql
+     * @return DaoOne
+     */
+    public function join($sql) {
+        if ($this->from=='') return $this->from($sql);
+        $this->from.=($sql)?" inner join $sql":'';
+        return  $this;
+    }
+
+    /**
+     * @param $sql
+     * @return DaoOne
+     */
+    public function left($sql) {
+        if ($this->from=='') return $this->from($sql);
+        $this->from.=($sql)?" left join $sql":'';
+        return  $this;
+    }
+    /**
+     * @param $sql
+     * @return DaoOne
+     */
+    public function right($sql) {
+        if ($this->from=='') return $this->from($sql);
+        $this->from.=($sql)?" right join $sql":'';
+        return  $this;
+    }
+
+    /**
+     * @param $sql
      * @param array $param
      * @return DaoOne
      */
@@ -484,6 +515,7 @@ class DaoOne
     }
 
     /**
+     * It returns an array of rows.
      * @return bool
      * @throws Exception
      */
@@ -492,6 +524,7 @@ class DaoOne
     }
 
     /**
+     * It returns a mysqli_result.
      * @return \mysqli_result
      * @throws Exception
      */
@@ -499,6 +532,7 @@ class DaoOne
         return $this->runGen(false);
     }
     /**
+     * It returns the first row.  If there is not row then it returns empty.
      * @return array|null
      * @throws Exception
      */
@@ -512,8 +546,94 @@ class DaoOne
         }
         return null;
     }
+    /**
+     * Returns the last row. It's not recommended. Use instead first() and change the order.
+     * @return array|null
+     * @throws Exception
+     */
+    public function last() {
+        /** @var \mysqli_result $rows */
+        $rows=$this->runGen(false);
+        if ($rows===false) return null;
+        $row=null;
+        while ($row = $rows->fetch_assoc()) {
+            $rows->free_result();
+        }
+        return $row;
+    }
 
+    /**
+     * @param string $table
+     * @param string[] $tableDef
+     * @param string[] $value
+     * @return mixed
+     * @throws Exception
+     */
+    public function insert($table,$tableDef,$value) {
+        $col=[];
+        $colT=[];
+        $param=[];
+        for($i=0;$i<count($tableDef);$i+=2) {
+            $col[]=$tableDef[$i];
+            $colT[]='?';
+            $param[]=$tableDef[$i+1];
+            $param[]=$value[$i/2];
+        }
+        $sql="insert into $table (".implode(',',$col).") values(".implode(',',$colT).")";
+        $this->runRawQuery($sql,$param);
+        return $this->insert_id();
+    }
 
+    /**
+     * @param string $table
+     * @param string[] $tableDef
+     * @param string[] $value
+     * @param string[] $tableDefWhere
+     * @param string[] $valueWhere
+     * @return mixed
+     * @throws Exception
+     */
+    public function update($table,$tableDef,$value,$tableDefWhere,$valueWhere) {
+        $col=[];
+        $colWhere=[];
+        $param=[];
+        for($i=0;$i<count($tableDef);$i+=2) {
+            $col[] = '`' . $tableDef[$i] . '`=?';
+            $param[] = $tableDef[$i + 1];
+            $param[] = $value[$i / 2];
+        }
+        for($i=0;$i<count($tableDefWhere);$i+=2) {
+            $colWhere[] = '`' . $tableDefWhere[$i] . '`=?';
+            $param[] = $tableDefWhere[$i + 1];
+            $param[] = $valueWhere[$i / 2];
+        }
+        $sql="update $table set ".implode(',',$col)." where ".implode(' and ',$colWhere);
+
+        $this->runRawQuery($sql,$param);
+        return $this->insert_id();
+    }
+
+    /**
+     * @param string $table
+     * @param string[] $tableDefWhere
+     * @param string[] $valueWhere
+     * @return mixed
+     * @throws Exception
+     */
+    public function delete($table,$tableDefWhere,$valueWhere) {
+        $colWhere=[];
+        $param=[];
+
+        for($i=0;$i<count($tableDefWhere);$i+=2) {
+            $colWhere[] = '`'.$tableDefWhere[$i].'`=?';
+            $param[] = $tableDefWhere[$i + 1];
+            $param[] = $valueWhere[$i / 2];
+        }
+        $sql="delete from $table where ".implode(' and ',$colWhere);
+
+        $this->runRawQuery($sql,$param);
+        return $this->insert_id();
+    }
 
     /**
      * Run builder query.
@@ -542,14 +662,22 @@ class DaoOne
         }
         $this->runQuery($stmt);
         $rows = $stmt->get_result();
+        $stmt->close();
+
         $this->builderReset();
         if ($returnArray) {
-            return $rows->fetch_all(MYSQLI_ASSOC);
+            $r=$rows->fetch_all(MYSQLI_ASSOC);
+            $rows->free_result();
+            return $r;
         } else {
             return $rows;
         }
     }
-    public function builderReset() {
+
+    /**
+     * It reset the parameters used to Build Query.
+     */
+    private function builderReset() {
         $this->select='';
         $this->from='';
         $this->where=[];
@@ -558,11 +686,11 @@ class DaoOne
         $this->whereParamValue=array();
         $this->group='';
         $this->having=[];
-        $this->order='';
-        $this->distinct='';
         $this->limit='';
-
+        $this->distinct='';
+        $this->order='';
     }
+
     //</editor-fold>
 
     //<editor-fold desc="Encryption functions" defaultstate="collapsed" >
