@@ -1,7 +1,7 @@
 {
     "name": "eftec/daoone",
     "description": "Data Access Object wrapper in a single Class",
-    "version": "2.6.4",
+    "version": "3.0",
     "type": "library",
     "keywords": [
         "dao",

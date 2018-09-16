@@ -7,7 +7,7 @@ use Exception;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 2.6.4 20180915
+ * @version 3.0 20180915
  * @package eftec
  * @author Jorge C.
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -45,7 +45,22 @@ class DaoOne
     /** @var string Encryption method, See http://php.net/manual/en/function.openssl-get-cipher-methods.php */
     var $encMethod='';
     //</editor-fold>
-
+    //<editor-fold desc="query builder fields">
+    private $select='';
+    private $from='';
+    /** @var array  */
+    private $where=array();
+    /** @var array  */
+    private $whereParamType=array();
+    private $whereCounter=0;
+    private $whereParamValue=array();
+    private $group='';
+    /** @var array  */
+    private $having=array();
+    private $limit='';
+    private $distinct='';
+    private $order='';
+    //</editor-fold>
     /**
      * ClassUtilDB constructor.
      * @param string $server server ip. Ex. 127.0.0.1
@@ -161,10 +176,12 @@ class DaoOne
     /**
      * Run an unprepared query.
      * @param string $rawSql
+     * @param array|null $param
+     * @param bool $returnArray
      * @return bool|\mysqli_result
      * @throws Exception
      */
-    public function runRawQuery($rawSql) {
+    public function runRawQuery($rawSql,$param=null,$returnArray=true) {
         if ($this->readonly) {
             if (stripos($rawSql,'insert ')===0 || stripos($rawSql,'update ')===0 || stripos($rawSql,'delete ')===0) {
                 // we aren't checking SQL-DCL queries. Also, "insert into" is stopped but "  insert into" not.
@@ -172,6 +189,7 @@ class DaoOne
                 throw new Exception("Database is in READ ONLY MODE");
             }
         }
+        if ($param==null) {
         try {
             $r = $this->conn1->query($rawSql);
         } catch(Exception $ex) {
@@ -182,7 +200,37 @@ class DaoOne
             $this->debugFile("Unable to run raw query\t".$rawSql);
             throw new Exception("Unable to run raw query ".$rawSql);
         }
-        return  $r;
+            return $r;
+        }
+        // the whery has parameters.
+        $stmt=$this->prepare($rawSql);
+        $parType='';
+        $values=[];
+
+        for($i=0;$i<count($param);$i+=2) {
+            $parType.=$param[$i];
+            $values['i_'.$i]=$param[$i+1];
+        }
+        // set values
+        foreach($values as $key=>$value) {
+            $$key = $value;
+        }
+        $tmp2=implode(',$',array_keys($values));
+        $tmp3='$stmt->bind_param("'.$parType.'",$'.$tmp2.');';
+        if ($parType!="") {
+            // Empty means that the query doesn't use parameters. Such as select * from table
+            $reval=@eval($tmp3.'; return true;');
+            if (!$reval) {
+                throw new Exception("Error in bind");
+            }
+        }
+        $this->runQuery($stmt);
+        $rows = $stmt->get_result();
+        if ($returnArray && $rows) {
+            return $rows->fetch_all(MYSQLI_ASSOC);
+        } else {
+            return $rows;
+        }
     }
 
     /**
@@ -327,6 +375,193 @@ class DaoOne
                 return DateTime::createFromFormat('Y-m-d', $sqlField);
             }
         }
+    }
+    //</editor-fold>
+
+    //<editor-fold desc="Query Builder functions" defaultstate="collapsed" >
+    /**
+     * @param $sql
+     * @return DaoOne
+     */
+    public function select($sql) {
+
+        $this->select=$sql;
+        return $this;
+    }
+    /**
+     * @param $sql
+     * @return DaoOne
+     */
+    public function from($sql) {
+        $this->from=($sql)?' from '.$sql:'';
+        return  $this;
+    }
+
+    /**
+     * @param $sql
+     * @param array $param
+     * @return DaoOne
+     */
+    public function where($sql,$param=null) {
+        $this->where[]=$sql;
+        if ($param===null) return $this;
+        for($i=0;$i<count($param);$i+=2 ) {
+            $this->whereCounter++;
+            $this->whereParamType[] = $param[$i];
+            $this->whereParamValue['i_' . $this->whereCounter] = $param[$i+1];
+        }
+        return  $this;
+    }
+
+    /**
+     * @param $sql
+     * @return DaoOne
+     */
+    public function group($sql) {
+        $this->group=($sql)?' group by '.$sql:'';
+        return  $this;
+    }
+
+    /**
+     * @param $sql
+     * @param array $param
+     * @return DaoOne
+     */
+    public function having($sql,$param) {
+        $this->having[]=$sql;
+        if ($param===null) return $this;
+        for($i=0;$i<count($param);$i+=2 ) {
+            $this->whereCounter++;
+            $this->whereParamType[] = $param[$i];
+            $this->whereParamValue['i_' . $this->whereCounter] = $param[$i+1];
+        }
+        return  $this;
+    }
+
+    /**
+     * @param $sql
+     * @return DaoOne
+     */
+    public function order($sql) {
+        $this->order=($sql)?' order by '.$sql:'';
+        return  $this;
+    }
+    /**
+     * @param $sql
+     * @return DaoOne
+     */
+    public function limit($sql) {
+        $this->limit=($sql)?' limit '.$sql:'';
+        return  $this;
+    }
+
+    /**
+     * @param $sql
+     * @return DaoOne
+     */
+    public function distinct($sql='distinct') {
+        $this->distinct=($sql)?$sql.' ':'';
+        return  $this;
+    }
+
+    /**
+     * Generates the sql to run.
+     * @return string
+     */
+    public function sqlGen() {
+        if (count($this->where)) {
+            $where=' where '.implode(' and ',$this->where);
+        } else {
+            $where='';
+        }
+        if (count($this->having)) {
+            $having=' having '.implode(' and ',$this->having);
+        } else {
+            $having='';
+        }
+        $sql='select '.$this->distinct.$this->select.$this->from.$where.$this->group.$having.$this->order.$this->limit;
+        return $sql;
+    }
+
+    /**
+     * @return bool
+     * @throws Exception
+     */
+    public function toList() {
+        return $this->runGen(true);
+    }
+
+    /**
+     * @return \mysqli_result
+     * @throws Exception
+     */
+    public function toResult() {
+        return $this->runGen(false);
+    }
+    /**
+     * @return array|null
+     * @throws Exception
+     */
+    public function first() {
+        /** @var \mysqli_result $rows */
+        $rows=$this->runGen(false);
+        if ($rows===false) return null;
+        while ($row = $rows->fetch_assoc()) {
+            $rows->free_result();
+            return $row;
+        }
+        return null;
+    }
+
+
+
+    /**
+     * Run builder query.
+     * @param bool $returnArray true=return an array. False return a mysqli_result
+     * @return bool|\mysqli_result
+     * @throws Exception
+     */
+    public function runGen($returnArray=true) {
+        $sql=$this->sqlGen();
+        /** @var \mysqli_stmt $stmt */
+        $stmt=$this->prepare($sql);
+        $parType=implode('',$this->whereParamType);
+
+        foreach($this->whereParamValue as $key=>$value) {
+            $$key = $value;
+        }
+        $tmp2=implode(',$',array_keys($this->whereParamValue));
+
+        $tmp3='$stmt->bind_param("'.$parType.'",$'.$tmp2.');';
+        if ($parType!="") {
+            // Empty means that the query doesn't use parameters. Such as select * from table
+            $reval=@eval($tmp3.'; return true;');
+            if (!$reval) {
+                throw new Exception("Error in bind");
+            }
+        }
+        $this->runQuery($stmt);
+        $rows = $stmt->get_result();
+        $this->builderReset();
+        if ($returnArray) {
+            return $rows->fetch_all(MYSQLI_ASSOC);
+        } else {
+            return $rows;
+        }
+    }
+    public function builderReset() {
+        $this->select='';
+        $this->from='';
+        $this->where=[];
+        $this->whereParamType=array();
+        $this->whereCounter=0;
+        $this->whereParamValue=array();
+        $this->group='';
+        $this->having=[];
+        $this->order='';
+        $this->distinct='';
+        $this->limit='';
+
     }
     //</editor-fold>
 

@@ -31,11 +31,12 @@ $dao=new DaoOne("127.0.0.1","root","abc.123","sakila","");
 $dao->connect();
 ```
 
-where 127.0.0.1 is the server where is the database.
-root is the user   
-abc.123 is the password of the user root.
-sakila is the database used.
-"" (optional) it could be a log file, such as c:\temp\log.txt
+where 
+* 127.0.0.1 is the server where is the database.
+* root is the user   
+* abc.123 is the password of the user root.
+* sakila is the database used.
+* "" (optional) it could be a log file, such as c:\temp\log.txt
 
 ### Run a unprepared query
 
@@ -55,6 +56,15 @@ $productName="Cocacola";
 $stmt->bind_param("s",$productName); // s stand for string. Also i =integer, d = double and b=blob
 $dao->runQuery($stmt);
 ```
+
+### Run a prepared query with parameters.
+```php
+$dao->runRawQuery('insert into `product` (name) values(?)'
+    ,array('s','cocacola'));
+```
+
+
+
 ### Return data (first method)
 
 ```php
@@ -95,8 +105,157 @@ try {
 }
 ```   
 
+## Query Builder
+You could also build procedure query.
+
+Example:
+```php
+$results = $dao->select("*")->from("producttype")
+    ->where('name=?', ['s', 'Cocacola'])
+    ->where('idproducttype=?', ['i', 1])
+    ->toList();   
+```
+
+### select($columns)
+Generates a select command.
+```php
+$results = $dao->select("col1,col2")->...
+```
+> Generates the query: **select col1,col2** ....
+
+### distinct($distinct='distinct')
+Generates a select command.
+```php
+$results = $dao->select("col1,col2")->distinct()...
+```
+> Generates the query: select **distinct** col1,col2 ....
+
+>Note: ->distinct('unique') returns select **unique** ..
+
+### from($tables)
+Generates a from command.
+```php
+$results = $dao->select("*")->from('table')...
+```
+> Generates the query: select * **from table**
+
+### where($where,[$arrayParameters=array()])
+Generates a where command.
+```php
+$results = $dao->select("*")
+->from('table')
+->where('p1=1')...
+```
+> Generates the query: select * **from table** where p1=1
+
+> Note: ArrayParameters is an array as follow: **type,value.**     
+>   Where type is i=integer, d=double, s=string or b=blob. In case of doubt, use "s"   
+> Example of arrayParameters:   
+> ['i',1 ,'s','hello' ,'d',20.3 ,'s','world']
+
+```php
+$results = $dao->select("*")
+->from('table')
+->where('p1=?',['i',1])...
+```
+> Generates the query: select * from table **where p1=?(1)**
+
+```php
+$results = $dao->select("*")
+->from('table')
+->where('p1=? and p2=?',['i',1,'s','hello'])...
+```
+
+> Generates the query: select * from table **where p1=?(1) and p2=?('hello')**
+
+> Note. where could be nested.
+```php
+$results = $dao->select("*")
+->from('table')
+->where('p1=?',['i',1])
+->where('p2=?',['s','hello'])...
+```
+> Generates the query: select * from table **where p1=?(1) and p2=?('hello')**
+
+### order($order)
+Generates a order command.
+```php
+$results = $dao->select("*")
+->from('table')
+->order('p1 desc')...
+```
+> Generates the query: select * from table **order by p1 desc**
+
+### group($group)
+Generates a group command.
+```php
+$results = $dao->select("*")
+->from('table')
+->group('p1')...
+```
+> Generates the query: select * from table **group by p1**
+
+### having($having,[$arrayParameters])
+Generates a group command.
+```php
+$results = $dao->select("*")
+->from('table')
+->group('p1')
+->having('p1>?',array('i',1))...
+```
+> Generates the query: select * from table group by p1 having p1>?(1)
+
+> Note: Having could be nested having()->having()  
+> Note: Having could be without parameters having('col>10') 
+
+### runGen($returnArray=true)
+Run the query generate.
+
+>Note if returnArray is true then it returns an associative array.
+> if returnArray is false then it returns a mysqli_result  
+>Note: It resets the current parameters (such as current select,from,where,etc.)
+
+### toList()
+It's a macro of runGen. It returns an associative array or null
+
+```php
+$results = $dao->select("*")
+->from('table')
+->toList()
+```
+### toResult()
+It's a macro of runGen. It returns a mysqli_result or null.
+
+```php
+$results = $dao->select("*")
+->from('table')
+->toResult()
+```
+
+### first()
+It's a macro of runGen. It returns the first row (if any, if not, it returns false) as an associative array.
+
+```php
+$results = $dao->select("*")
+->from('table')
+->first()
+```
+
+### sqlGen()
+
+It returns the sql command.
+```php
+$sql = $dao->select("*")
+->from('table')
+->sqlGen();
+echo $sql; // returns select * from table
+$results=$dao->toList(); // executes the query
+```
+> Note: it doesn't reset the query.
+
 ## Changelist
 
+* 3.0 Major overhaul. It adds Query Builder features.
 * 2.6.4 Better correction of error.
 * 2.6.3 Fixed transaction. Now a nested transanction is not nested (and returns a false).
 * 2.6 first public version
