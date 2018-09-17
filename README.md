@@ -105,7 +105,7 @@ try {
 }
 ```   
 
-## Query Builder
+## Query Builder (DQL)
 You could also build procedure query.
 
 Example:
@@ -115,49 +115,6 @@ $results = $dao->select("*")->from("producttype")
     ->where('idproducttype=?', ['i', 1])
     ->toList();   
 ```
-
-### insert($table,$schema,$values)
-Generates a insert command.
-
-Where
-* **$table** = is the name of the table
-* **$schema**= is an array of the style [column,type,column2,type2...] where column is the name of the column and type is i=integer,d=double,s=string,b=blob
-* **$values**= is an array with values.
-
-```php
-$dao->insert("producttype",['idproducttype','i','name','s','type','i'],[1,'cocacola',1]);
-```
-> Generates the query: **insert into productype(idproducttype,name,type) values(?,?,?)** ....
-
-
-### update($$table,$schema,$values,$schemaWhere,$valuesWhere)
-Generates a insert command.
-
-Where
-* **$table** = is the name of the table
-* **$schema**= is an array of the style [column,type,column2,type2...] where column is the name of the column and type is i=integer,d=double,s=string,b=blob
-* **$values**= is an array with values.
-* **$schemaWhere**= is an array of the style [column,type,column2,type2...] where column is the name of the column and type is i=integer,d=double,s=string,b=blob
-* **$valuesWhere**= is an array with values.
-
-```php
-$dao->update("producttype",['name','s','type','i'],[6,'Captain-Crunch',2],['idproducttype','i'],[6]);
-```
-> Generates the query: **update producttype set `name`=?,`type`=? where `idproducttype`=?** ....
-
-### delete($table,$schemaWhere,$valuesWhere)
-Generates a delete command.
-
-Where
-* **$table** = is the name of the table
-* **$schemaWhere**= is an array of the style [column,type,column2,type2...] where column is the name of the column and type is i=integer,d=double,s=string,b=blob
-* **$valuesWhere**= is an array with values.
-```php
-$dao->delete("producttype",['idproducttype','i'],[7]);
-```
-> Generates the query: **delete from producttype where `idproducttype`=?** ....
-
-
 
 ### select($columns)
 Generates a select command.
@@ -182,8 +139,18 @@ $results = $dao->select("*")->from('table')...
 ```
 > Generates the query: select * **from table**
 
+**$tables** could be a single table or a sql construction. For examp, the next command is valid:
+
+```php
+$results = $dao->select("*")->from('table t1 inner join t2 on t1.c1=t2.c2')...
+```
+
+
 ### where($where,[$arrayParameters=array()])
 Generates a where command.
+
+* $where is an array or a string. If it's a string the it's evaluated by using the parameters. if any
+
 ```php
 $results = $dao->select("*")
 ->from('table')
@@ -219,6 +186,14 @@ $results = $dao->select("*")
 ->where('p2=?',['s','hello'])...
 ```
 > Generates the query: select * from table **where p1=?(1) and p2=?('hello')**
+
+You could also use:
+```php
+$results = $dao->select("*")->from("table")
+    ->where(['p1'=>'Coca-Cola','p2'=>1])
+    ->toList();
+```
+> Generates the query: select * from table **where p1=?(Coca-Cola) and p2=?(1)**        
 
 ### order($order)
 Generates a order command.
@@ -284,6 +259,16 @@ $results = $dao->select("*")
 ->first()
 ```
 
+### last()
+It's a macro of runGen. It returns the last row (if any, if not, it returns false) as an associative array.
+
+```php
+$results = $dao->select("*")
+->from('table')
+->last()
+```
+> Sometimes is more efficient to run order() and first() because last() reads all values.
+
 ### sqlGen()
 
 It returns the sql command.
@@ -296,8 +281,96 @@ $results=$dao->toList(); // executes the query
 ```
 > Note: it doesn't reset the query.
 
+## Query Builder (DML), i.e. insert, update,delete
+
+There are four ways execute each command.
+
+Let's say that we want to add an **integer** in the column **col1** with the value **20**
+
+__Schema and values using a list of values__: Where the first value is the column, the second is the type of value (i=integer,d=double,s=string,b=blob) and second array contains the values.
+```php
+$dao->insert("table"
+    ,['col1','i']
+    ,[20]);
+```
+__Schema and values in the same list__: Where the first value is the column, the second is the type of value (i=integer,d=double,s=string,b=blob) and the third is the value.
+```php
+$dao->insert("table"
+    ,['col1','i',20]);
+```
+
+__Schema and values using two associative arrays__:
+
+```php
+$dao->insert("table"
+    ,['col1'=>'i']
+    ,['col1'=>20]);
+```
+__Schema and values using a single associative array__: The type is calculated automatically.
+
+```php
+$dao->insert("table"
+    ,['col1'=>20]);
+```
+
+### insert($table,$schema,[$values])
+Generates a insert command.
+
+```php
+$dao->insert("producttype"
+    ,['idproducttype','i','name','s','type','i']
+    ,[1,'cocacola',1]);
+```
+
+```php
+$dao->insert("producttype"
+    ,['idproducttype'=>1,'name'='cocacola','type'=>1]);
+```
+
+
+> Generates the query: **insert into productype(idproducttype,name,type) values(?,?,?)** ....
+
+
+### update($$table,$schema,$values,[$schemaWhere],[$valuesWhere])
+Generates a insert command.
+
+```php
+$dao->update("producttype"
+    ,['name','s','type','i'] //set
+    ,[6,'Captain-Crunch',2] //set
+    ,['idproducttype','i'] // where
+    ,[6]); // where
+```
+
+```php
+$dao->update("producttype"
+    ,['name'=>'Captain-Crunch','type'=>2] // set
+    ,['idproducttype'=>6]); // where
+```
+
+> Generates the query: **update producttype set `name`=?,`type`=? where `idproducttype`=?** ....
+
+### delete($table,$schemaWhere,[$valuesWhere])
+Generates a delete command.
+
+```php
+$dao->delete("producttype"
+    ,['idproducttype','i'] // where
+    ,[7]); // where
+```
+```php
+$dao->delete("producttype"
+    ,['idproducttype'=>7]); // where
+```
+
+
+> Generates the query: **delete from producttype where `idproducttype`=?** ....
+
+
+
 ## Changelist
 
+* 3.3 DML modified. It allows different kind of parameters.
 * 3.2 Insert, Update,Delete
 * 3.0 Major overhaul. It adds Query Builder features.
 * 2.6.4 Better correction of error.

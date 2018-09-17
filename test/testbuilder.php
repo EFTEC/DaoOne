@@ -32,28 +32,57 @@ $now=new DateTime();
 try {
     echo "<h1>Table creation (it's ok if it fails if exists):</h1>";
     $dao->runRawQuery($sqlT1);
+    echo $dao->lastQuery."<br>";
     $dao->runRawQuery($sqlT2);
+    echo $dao->lastQuery."<br>";
 } catch (Exception $e) {
     echo "<h2>Table creation error:</h2>";
     echo $dao->lastError()."-".$e->getMessage()."<br>";
 }
+
+try {
+    echo "<h1>Table truncate :</h1>";
+    $dao->runRawQuery("truncate table typetable");
+    echo $dao->lastQuery."<br>";
+    $dao->runRawQuery("truncate table producttype");
+    echo $dao->lastQuery."<br>";
+} catch (Exception $e) {
+    echo "<h2>Table truncate error:</h2>";
+    echo $dao->lastError()."-".$e->getMessage()."<br>";
+}
+
 try {
     echo "<h1>Table insert (it's ok if it fails if exists):</h1>";
-    $dao->runRawQuery('insert into `typetable`(`type`,`name`) values(?,?)',array('i',1,'s','Drink'));
-    $dao->runRawQuery('insert into `typetable`(`type`,`name`) values(?,?)',array('i',2,'s','Yummy'));
+    $dao->runRawQuery('insert into `typetable`(`type`,`name`) values(?,?)'
+        ,array('i',1,'s','Drink'));
+    echo $dao->lastQuery."<br>";
+    $dao->runRawQuery('insert into `typetable`(`type`,`name`) values(?,?)'
+        ,array('i',2,'s','Yummy'));
     echo $dao->lastQuery."<br>";
 
-
-
-
-    $dao->insert("producttype",['idproducttype','i','name','s','type','i'],[1,'cocacola',1]);
-    $dao->insert("producttype",['idproducttype','i','name','s','type','i'],[2,'fanta',1]);
-    $dao->insert("producttype",['idproducttype','i','name','s','type','i'],[3,'sprite',1]);
-    $dao->insert("producttype",['idproducttype','i','name','s','type','i'],[4,'Kellows',2]);
+    // $dao->insert("producttype",['idproducttype','i','name','s','type','i'],[1,'Coca-Cola',1]);
+    $dao->insert("producttype"
+        ,['idproducttype','i',1 ,'name','s','Coca-Cola' ,'type','i',1]); // type1
+    echo $dao->lastQuery."<br>";
+    $dao->insert("producttype"
+        ,['idproducttype','i','name','s','type','i']
+        ,[2,'Fanta',1]); // type 2
+    echo $dao->lastQuery."<br>";
+    $dao->insert("producttype"
+        ,['idproducttype'=>'i','name'=>'s','type'=>'i']
+        ,['idproducttype'=>3,'name'=>'Sprite','type'=>'1']); // type3 arrays declarative
+    echo $dao->lastQuery."<br>";
+    $dao->insert("producttype"
+        ,['idproducttype'=>4,'name'=>"Kellogg's",'type'=>2]); // type 4 array declarative, automatic type
+    echo $dao->lastQuery."<br>";
     $dao->insert("producttype",['idproducttype','i','name','s','type','i'],[5,'Chocapic',2]);
+    echo $dao->lastQuery."<br>";
     $dao->insert("producttype",['idproducttype','i','name','s','type','i'],[6,'CaptainCrunch',2]);
     echo $dao->lastQuery."<br>";
-
+    $dao->insert("producttype",['idproducttype','i','name','s','type','i'],[7,'will be deleted 1',2]);
+    echo $dao->lastQuery."<br>";
+    $dao->insert("producttype",['idproducttype','i','name','s','type','i'],[8,'will be deleted 2',2]);
+    echo $dao->lastQuery."<br>";
 
 } catch (Exception $e) {
     echo "<h2>Table insert error:</h2>";
@@ -62,7 +91,16 @@ try {
 
 try {
     echo "<h1>Table update:</h1>";
-    $dao->update("producttype",['name','s','type','i'],[6,'Captain-Crunch',2],['idproducttype','i'],[6]);
+    $dao->update("producttype"
+        ,['name','s','type','i']
+        ,['Captain-Crunch',2]
+        ,['idproducttype','i']
+        ,[6]);
+    echo $dao->lastQuery."<br>";
+    $dao->update("producttype"
+        ,['Name'=>'Mountain Dew']
+        ,['idproducttype'=>3]
+        );
     echo $dao->lastQuery."<br>";
 } catch (Exception $e) {
     echo "<h2>Table update error:</h2>";
@@ -71,7 +109,13 @@ try {
 
 try {
     echo "<h1>Table delete:</h1>";
-    $dao->delete("producttype",['idproducttype','i'],[7]);
+    $dao->delete("producttype"
+        ,['idproducttype','i']
+        ,[7]);
+    echo $dao->lastQuery."<br>";
+    $dao->delete("producttype"
+        ,['idproducttype'=>8]
+    );
     echo $dao->lastQuery."<br>";
 } catch (Exception $e) {
     echo "<h2>Table delete error:</h2>";
@@ -82,8 +126,38 @@ try {
 try {
     echo "<hr>toList:";
     $results = $dao->select("*")->from("producttype")
-        ->where('name=?', ['s', 'Cocacola'])
+        ->where('name=?', ['s', 'Coca-Cola'])
         ->where('idproducttype=?', ['i', 1])
+        ->toList();
+    echo $dao->lastQuery;
+    echo build_table($results);
+
+    echo "<hr>toList using associative array:";
+    $results = $dao->select("*")->from("producttype")
+        ->where(['name'=>'Coca-Cola','idproducttype'=>1])
+        ->toList();
+    echo $dao->lastQuery;
+    echo build_table($results);
+
+    echo "<hr>toList using associative array:";
+    $results = $dao->select("*")->from("producttype")
+        ->where(['name'=>'s','idproducttype'=>'i'],
+        ['name'=>'Coca-Cola','idproducttype'=>1])
+        ->toList();
+    echo $dao->lastQuery;
+    echo build_table($results);
+
+    echo "<hr>toList using associative array:";
+    $results = $dao->select("*")->from("producttype")
+        ->where(['name','s','idproducttype','i'],
+            ['Coca-Cola',1])
+        ->toList();
+    echo $dao->lastQuery;
+    echo build_table($results);
+
+    echo "<hr>toList using associative array:";
+    $results = $dao->select("*")->from("producttype")
+        ->where(['name','s','Coca-Cola','idproducttype','i',1])
         ->toList();
     echo $dao->lastQuery;
     echo build_table($results);
@@ -123,7 +197,7 @@ try {
 
     echo "<hr>toResult: ";
     $resultsQuery = $dao->select("*")->from("producttype")
-        ->where('name=?', ['s', 'Cocacola'])
+        ->where('name=?', ['s', 'Coca-Cola'])
         ->where('idproducttype=?', ['i', 1])
         ->toResult();
     echo $dao->lastQuery;
@@ -133,7 +207,7 @@ try {
 
     echo "<hr>first: ";
     $results = $dao->select("*")->from("producttype")
-        ->where('name=?', ['s', 'Cocacola'])
+        ->where('name=?', ['s', 'Coca-Cola'])
         ->where('idproducttype=?', ['i', 1])
         ->limit('1')
         ->first();
@@ -142,7 +216,7 @@ try {
 
     echo "<hr>first returns nothing :";
     $results = $dao->select("*")->from("producttype")
-        ->where('name=?', ['s', 'Cocacola'])
+        ->where('name=?', ['s', 'Coca-Cola'])
         ->where('idproducttype=?', ['i', 55])
         ->limit('1')
         ->first();
@@ -187,6 +261,9 @@ function build_table($array){
         $array=array();
         $array[0]=$tmp;
     } // create an array with a single element
+    if ($array[0]===null) {
+        return "NULL<br>";
+    }
     // start table
     $html = '<table style="border: 1px solid black;">';
     // header row
