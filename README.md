@@ -3,6 +3,39 @@ Database Access Object wrapper for PHP and MySqli in a single class
 
 It's a simple wrapper for Mysqli
 
+- [DaoOne](#daoone)
+  * [Install (using composer)](#install--using-composer-)
+  * [Install (manually)](#install--manually-)
+  * [Usage](#usage)
+    + [Start a connection](#start-a-connection)
+    + [Run a unprepared query](#run-a-unprepared-query)
+    + [Run a prepared query](#run-a-prepared-query)
+    + [Run a prepared query with parameters.](#run-a-prepared-query-with-parameters)
+    + [Return data (first method)](#return-data--first-method-)
+    + [Return data (second method)](#return-data--second-method-)
+    + [Running a transaction](#running-a-transaction)
+  * [Query Builder (DQL)](#query-builder--dql-)
+    + [select($columns)](#select--columns-)
+    + [distinct($distinct='distinct')](#distinct--distinct--distinct--)
+    + [from($tables)](#from--tables-)
+    + [where($where,[$arrayParameters=array()])](#where--where---arrayparameters-array----)
+    + [order($order)](#order--order-)
+    + [group($group)](#group--group-)
+    + [having($having,[$arrayParameters])](#having--having---arrayparameters--)
+    + [runGen($returnArray=true)](#rungen--returnarray-true-)
+    + [toList()](#tolist--)
+    + [toResult()](#toresult--)
+    + [first()](#first--)
+    + [last()](#last--)
+    + [sqlGen()](#sqlgen--)
+  * [Query Builder (DML), i.e. insert, update,delete](#query-builder--dml---ie-insert--update-delete)
+    + [insert($table,$schema,[$values])](#insert--table--schema---values--)
+    + [update($$table,$schema,$values,[$schemaWhere],[$valuesWhere])](#update---table--schema--values---schemawhere----valueswhere--)
+    + [delete($table,$schemaWhere,[$valuesWhere])](#delete--table--schemawhere---valueswhere--)
+  * [Changelist](#changelist)
+
+
+
 ## Install (using composer)
 
 Add to composer.json the next requirement, then update composer.
