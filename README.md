@@ -16,7 +16,7 @@ DaoOne. It's a simple wrapper for Mysqli
   * [Install (manually)](#install--manually-)
   * [Usage](#usage)
     + [Start a connection](#start-a-connection)
-    + [Run a unprepared query](#run-a-unprepared-query)
+    + [Run an unprepared query](#run-an-unprepared-query)
     + [Run a prepared query](#run-a-prepared-query)
     + [Run a prepared query with parameters.](#run-a-prepared-query-with-parameters)
     + [Return data (first method)](#return-data--first-method-)
@@ -79,7 +79,7 @@ where
 * sakila is the database used.
 * "" (optional) it could be a log file, such as c:\temp\log.txt
 
-### Run a unprepared query
+### Run an unprepared query
 
 ```php
 $sql="CREATE TABLE `product` (
@@ -147,7 +147,7 @@ try {
 ```   
 
 ## Query Builder (DQL)
-You could also build procedure query.
+You could also build a procedural query.
 
 Example:
 ```php
@@ -190,7 +190,7 @@ $results = $dao->select("*")->from('table t1 inner join t2 on t1.c1=t2.c2')...
 ### where($where,[$arrayParameters=array()])
 Generates a where command.
 
-* $where is an array or a string. If it's a string the it's evaluated by using the parameters. if any
+* $where is an array or a string. If it's a string, then it's evaluated by using the parameters. if any
 
 ```php
 $results = $dao->select("*")
@@ -272,10 +272,10 @@ Run the query generate.
 
 >Note if returnArray is true then it returns an associative array.
 > if returnArray is false then it returns a mysqli_result  
->Note: It resets the current parameters (such as current select,from,where,etc.)
+>Note: It resets the current parameters (such as current select, from, where,etc.)
 
 ### toList()
-It's a macro of runGen. It returns an associative array or null
+It's a macro of runGen. It returns an associative array or null.
 
 ```php
 $results = $dao->select("*")
@@ -324,7 +324,7 @@ $results=$dao->toList(); // executes the query
 
 ## Query Builder (DML), i.e. insert, update,delete
 
-There are four ways execute each command.
+There are four ways to execute each command.
 
 Let's say that we want to add an **integer** in the column **col1** with the value **20**
 
@@ -363,9 +363,27 @@ $dao->insert("producttype"
     ,[1,'cocacola',1]);
 ```
 
+Using nested chain (single array)
 ```php
-$dao->insert("producttype"
-    ,['idproducttype'=>1,'name'='cocacola','type'=>1]);
+    $dao->from("producttype")
+        ->set(['idproducttype','i',0 ,'name','s','Pepsi' ,'type','i',1])
+        ->insert();
+```
+
+Using nested chain multiple set
+```php
+    $dao->from("producttype")
+        ->set("idproducttype=?",['i',101])
+        ->set('name=?',['s','Pepsi'])
+        ->set('type=?',['i',1])
+        ->insert();
+```
+    
+Using nested chain declarative set
+```php
+    $dao->from("producttype")
+        ->set('(idproducttype,name,type) values (?,?,?)',['i',100,'s','Pepsi','i',1])
+        ->insert();
 ```
 
 
@@ -389,9 +407,18 @@ $dao->update("producttype"
     ,['idproducttype'=>6]); // where
 ```
 
+```php
+$dao->from("producttype")
+    ->set("name=?",['s','Captain-Crunch']) //set
+    ->set("type=?",['i',6]) //set
+    ->where('idproducttype=?',['i',6]) // where
+    ->update(); // update
+```
+
+
 > Generates the query: **update producttype set `name`=?,`type`=? where `idproducttype`=?** ....
 
-### delete($table,$schemaWhere,[$valuesWhere])
+### delete([$table],[$schemaWhere],[$valuesWhere])
 Generates a delete command.
 
 ```php
@@ -403,19 +430,32 @@ $dao->delete("producttype"
 $dao->delete("producttype"
     ,['idproducttype'=>7]); // where
 ```
-
-
 > Generates the query: **delete from producttype where `idproducttype`=?** ....
 
-
+You could also delete via a DQL builder chain.
+```php
+$dao->from("producttype")
+    ->where('idproducttype=?',['i',7]) // where
+    ->delete(); 
+```
+```php
+$dao->from("producttype")
+    ->where(['idproducttype'=>7]) // where
+    ->delete(); 
+```
+> Generates the query: **delete from producttype where `idproducttype`=?** ....
 
 ## Changelist
 
-* 3.3 DML modified. It allows different kind of parameters.
+* 3.4 DML new features. It allows nested operations 
+    + ->from()->where()->delete()
+    + ->from()->set()->where()->update()
+    + ->from()->set()->insert()
+* 3.3 DML modified. It allows a different kind of parameters.
 * 3.2 Insert, Update,Delete
 * 3.0 Major overhaul. It adds Query Builder features.
 * 2.6.4 Better correction of error.
-* 2.6.3 Fixed transaction. Now a nested transanction is not nested (and returns a false).
+* 2.6.3 Fixed transaction. Now a nested transaction is not nested (and returns a false).
 * 2.6 first public version
 
 

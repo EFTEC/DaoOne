@@ -9,7 +9,7 @@ use Exception;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 3.3 20180917
+ * @version 3.4 20180917
  * @package eftec
  * @author Jorge Castro Castillo
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -63,7 +63,10 @@ class DaoOne
     /** @var array */
     private $whereParamType = array();
     private $whereCounter = 0;
+    /** @var array  */
     private $whereParamValue = array();
+    /** @var array */
+    private $set = array();
     private $group = '';
     //</editor-fold>
     /** @var array */
@@ -331,7 +334,7 @@ class DaoOne
      */
     public function from($sql)
     {
-        $this->from = ($sql) ? ' from ' . $sql : '';
+        $this->from = ($sql) ? " $sql ": '';
         return $this;
     }
     //</editor-fold>
@@ -372,9 +375,9 @@ class DaoOne
             $this->where[] = $sql;
             if ($param === null) return $this;
             for ($i = 0; $i < count($param); $i += 2) {
-                $this->whereCounter++;
                 $this->whereParamType[] = $param[$i];
                 $this->whereParamValue['i_' . $this->whereCounter] = $param[$i + 1];
+                $this->whereCounter++;
             }
         } else {
             $col=array();
@@ -383,18 +386,43 @@ class DaoOne
             $this->constructParam($sql,$param,$col,$colT,$p);
 
             foreach($col as $k=>$c) {
-                $this->where[] = $c.'=?';
-                $this->whereCounter++;
+                $this->where[] = "`$c`=?";
                 $this->whereParamType[] = $p[$k*2];
                 $this->whereParamValue['i_' . $this->whereCounter] = $p[$k*2+1];
+                $this->whereCounter++;
             }
-
         }
-
-
         return $this;
     }
-
+    /**
+     * @param string|array $sql
+     * @param array $param
+     * @return DaoOne
+     */
+    public function set($sql, $param = null)
+    {
+        if (is_string($sql)) {
+            $this->set[] = $sql;
+            if ($param === null) return $this;
+            for ($i = 0; $i < count($param); $i += 2) {
+                $this->whereParamType[] = $param[$i];
+                $this->whereParamValue['i_' . $this->whereCounter] = $param[$i + 1];
+                $this->whereCounter++;
+            }
+        } else {
+            $col=array();
+            $colT=array();
+            $p=array();
+            $this->constructParam($sql,$param,$col,$colT,$p);
+            foreach($col as $k=>$c) {
+                $this->set[] = "`$c`=?";
+                $this->whereParamType[] = $p[$k*2];
+                $this->whereParamValue['i_' . $this->whereCounter] = $p[$k*2+1];
+                $this->whereCounter++;
+            }
+        }
+        return $this;
+    }
     /**
      * @param $sql
      * @return DaoOne
@@ -415,9 +443,9 @@ class DaoOne
         $this->having[] = $sql;
         if ($param === null) return $this;
         for ($i = 0; $i < count($param); $i += 2) {
-            $this->whereCounter++;
             $this->whereParamType[] = $param[$i];
             $this->whereParamValue['i_' . $this->whereCounter] = $param[$i + 1];
+            $this->whereCounter++;
         }
         return $this;
     }
@@ -471,10 +499,10 @@ class DaoOne
     public function runGen($returnArray = true)
     {
         $sql = $this->sqlGen();
+
         /** @var \mysqli_stmt $stmt */
         $stmt = $this->prepare($sql);
         $parType = implode('', $this->whereParamType);
-
         foreach ($this->whereParamValue as $key => $value) {
             $$key = $value;
         }
@@ -518,7 +546,7 @@ class DaoOne
         } else {
             $having = '';
         }
-        $sql = 'select ' . $this->distinct . $this->select . $this->from . $where . $this->group . $having . $this->order . $this->limit;
+        $sql = 'select ' . $this->distinct . $this->select . ' from '.$this->from . $where . $this->group . $having . $this->order . $this->limit;
         return $sql;
     }
 
@@ -583,6 +611,7 @@ class DaoOne
         $this->whereParamType = array();
         $this->whereCounter = 0;
         $this->whereParamValue = array();
+        $this->set = [];
         $this->group = '';
         $this->having = [];
         $this->limit = '';
@@ -653,7 +682,7 @@ class DaoOne
             }
         }
         $this->lastQuery=$rawSql;
-        if ($param == null) {
+        if ($param === null) {
             try {
                 $r = $this->conn1->query($rawSql);
             } catch (Exception $ex) {
@@ -667,7 +696,7 @@ class DaoOne
 
             return $r;
         }
-        // the whery has parameters.
+        // the where has parameters.
         $stmt = $this->prepare($rawSql);
         $parType = '';
         $values = [];
@@ -707,6 +736,14 @@ class DaoOne
     {
         return $this->conn1->insert_id;
     }
+    /**
+     * Returns the number of affected rows.
+     * @return mixed
+     */
+    public function affected_rows()
+    {
+        return $this->conn1->affected_rows;
+    }
 
     /**
      * Generate and run an update in the database.
@@ -723,23 +760,36 @@ class DaoOne
      * @return mixed
      * @throws Exception
      */
-    public function update($table, $tableDef, $value, $tableDefWhere=null, $valueWhere=null)
+    public function update($table=null, $tableDef=null, $value=null, $tableDefWhere=null, $valueWhere=null)
     {
-        $col = [];
-        $colT = null;
-        $colWhere = [];
-        $param = [];
-        if ($tableDefWhere===null) {
-            $this->constructParam($tableDef,null,$col,$colT,$param);
-            $this->constructParam($value,null,$colWhere,$colT,$param);
+        if ($table===null) {
+            // using builder. from()->set()->where()->update()
+            $sql="update ".$this->from." ".$this->constructSet('set').' '.$this->constructWhere();
+            $param=[];
+            for($i=0;$i<count($this->whereParamType);$i++) {
+                $param[]=$this->whereParamType[$i];
+                $param[]=$this->whereParamValue['i_'.$i];
+            }
+            $this->runRawQuery($sql, $param,true);
+            $this->builderReset();
+            return $this->affected_rows();
         } else {
-            $this->constructParam($tableDef,$value,$col,$colT,$param);
-            $this->constructParam($tableDefWhere,$valueWhere,$colWhere,$colT,$param);
-        }
-        $sql = "update $table set " . implode(',', $col) . " where " . implode(' and ', $colWhere);
+            $col = [];
+            $colT = null;
+            $colWhere = [];
+            $param = [];
+            if ($tableDefWhere === null) {
+                $this->constructParam($tableDef, null, $col, $colT, $param);
+                $this->constructParam($value, null, $colWhere, $colT, $param);
+            } else {
+                $this->constructParam($tableDef, $value, $col, $colT, $param);
+                $this->constructParam($tableDefWhere, $valueWhere, $colWhere, $colT, $param);
+            }
+            $sql = "update $table set " . implode(',', $col) . " where " . implode(' and ', $colWhere);
 
-        $this->runRawQuery($sql, $param);
-        return $this->insert_id();
+            $this->runRawQuery($sql, $param);
+            return $this->insert_id();
+        }
     }
     /**
      * Generates and execute an insert command. Example:
@@ -756,15 +806,29 @@ class DaoOne
      * @return mixed
      * @throws Exception
      */
-    public function insert($table, $tableDef, $value = null)
+    public function insert($table=null, $tableDef=null, $value = null)
     {
-        $col = [];
-        $colT = [];
-        $param = [];
-        $this->constructParam($tableDef,$value,$col,$colT,$param);
-        $sql = "insert into $table (" . implode(',', $col) . ") values(" . implode(',', $colT) . ")";
-        $this->runRawQuery($sql, $param);
-        return $this->insert_id();
+        if ($table===null) {
+            // using builder. from()->where()->delete()
+            $sql="insert into ".$this->from." ".$this->constructInsert("into");
+            $param=[];
+            for($i=0;$i<count($this->whereParamType);$i++) {
+                $param[]=$this->whereParamType[$i];
+                $param[]=$this->whereParamValue['i_'.$i];
+            }
+            echo $sql."<br>";
+            $this->runRawQuery($sql, $param,true);
+            $this->builderReset();
+            return $this->affected_rows();
+        } else {
+            $col = [];
+            $colT = [];
+            $param = [];
+            $this->constructParam($tableDef, $value, $col, $colT, $param);
+            $sql = "insert into $table (" . implode(',', $col) . ") values(" . implode(',', $colT) . ")";
+            $this->runRawQuery($sql, $param);
+            return $this->insert_id();
+        }
     }
 
 
@@ -773,6 +837,8 @@ class DaoOne
      * delete('table',['col1','i',10,'col2','s','hello world']);
      * // or
      * delete('table',['col1','i','col2','s'],[10,'hello world']);
+     * // or
+     * delete() if run on a chain $db->from('table')->where('..')->delete()
      * </code>
      * @param string $table
      * @param string[] $tableDefWhere
@@ -780,16 +846,80 @@ class DaoOne
      * @return mixed
      * @throws Exception
      */
-    public function delete($table, $tableDefWhere, $valueWhere=null)
+    public function delete($table=null, $tableDefWhere=null, $valueWhere=null)
     {
-        $colWhere = [];
-        $colT = null;
-        $param = [];
-        $this->constructParam($tableDefWhere,$valueWhere,$colWhere,$colT,$param);
-        $sql = "delete from $table where " . implode(' and ', $colWhere);
+        if ($table===null) {
+            // using builder. from()->where()->delete()
+            $sql="delete from ".$this->from." ".$this->constructWhere();
+            $param=[];
+            for($i=0;$i<count($this->whereParamType);$i++) {
+                $param[]=$this->whereParamType[$i];
+                $param[]=$this->whereParamValue['i_'.$i];
+            }
+            $this->runRawQuery($sql, $param,true);
+            $this->builderReset();
+            return $this->affected_rows();
+        } else {
+            // using table/tabldefwhere/valuewhere
+            $colWhere = [];
+            $colT = null;
+            $param = [];
+            $this->constructParam($tableDefWhere, $valueWhere, $colWhere, $colT, $param);
+            $sql = "delete from $table where " . implode(' and ', $colWhere);
 
-        $this->runRawQuery($sql, $param);
-        return $this->insert_id();
+            $this->runRawQuery($sql, $param,true);
+            return $this->affected_rows();
+        }
+    }
+
+    /**
+     * @return string
+     */
+    private function constructWhere() {
+        if (count($this->where)) {
+            $where = ' where ' . implode(' and ', $this->where);
+        } else {
+            $where = '';
+        }
+        return $where;
+    }
+
+    /**
+     * @return string
+     */
+    private function constructSet() {
+        if (count($this->set)) {
+            $where = " set " . implode(',', $this->set);
+        } else {
+            $where = '';
+        }
+        return $where;
+    }
+
+    /**
+     * @return string
+     */
+    private function constructInsert() {
+        if (count($this->set)) {
+            $arr=[];
+            $val=[];
+            $first=$this->set[0];
+            if (strpos($first,'=')!==false) {
+                // set([])
+                foreach($this->set as $v) {
+                    $tmp=explode('=',$v);
+                    $arr[]=$tmp[0];
+                    $val[]=$tmp[1];
+                }
+                $where = "(".implode(',',$arr).') values ('.implode(',', $val).')';
+            } else {
+                // set('(a,b,c) values(?,?,?)',[])
+                $where=$first;
+            }
+        } else {
+            $where = '';
+        }
+        return $where;
     }
 
     /**
