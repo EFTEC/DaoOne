@@ -43,6 +43,26 @@ try {
     echo $dao->lastError()."-".$e->getMessage()."<br>";
 }
 
+try {
+    echo "<h1>Nested Error: from()->insert()->set()</h1>";
+    $dao->from("table")
+        ->insert()
+        ->set();
+} catch (Exception $e) {
+    echo "<h2>Nested Error:</h2>";
+    echo $e->getMessage()."<br>";
+}
+
+try {
+    echo "<h1>Nested Error: from()->set()->where()</h1>";
+    $dao->from("table")
+        ->where(['b1'=>1])
+        ->set(['a1'=>1]);
+} catch (Exception $e) {
+    echo "<h2>Nested Error:</h2>";
+    echo $e->getMessage()."<br>";
+}
+
 // running a prepared statement
 try {
     echo "<h1>Inserting Cocacola (prepared)</h1>";

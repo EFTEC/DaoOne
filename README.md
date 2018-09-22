@@ -447,6 +447,8 @@ $dao->from("producttype")
 
 ## Changelist
 
+* 3.6 More fixes.
+* 3.5 Small fixed.
 * 3.4 DML new features. It allows nested operations 
     + ->from()->where()->delete()
     + ->from()->set()->where()->update()

@@ -9,7 +9,7 @@ use Exception;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 3.4 20180917
+ * @version 3.6 20180922
  * @package eftec
  * @author Jorge Castro Castillo
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -159,7 +159,7 @@ class DaoOne
     {
         if (!extension_loaded('openssl')) {
             $this->encEnabled = false;
-            throw new Exception("OpenSSL not loaded, encryption disabled");
+            $this->throwError("OpenSSL not loaded, encryption disabled");
         } else {
             $this->encEnabled = true;
             $this->encPassword = $password;
@@ -181,29 +181,29 @@ class DaoOne
     {
         mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
         if ($this->conn1 != null) {
-            $this->debugFile("Already connected");
-            throw new Exception("Already connected");
+            $this->throwError("Already connected");
         }
         try {
             $this->conn1 = new \mysqli($this->server, $this->user, $this->pwd, $this->db);
         } catch (Exception $ex) {
-            $this->debugFile("Failed to connect to MySQL:\t" . $ex->getMessage());
-            throw new Exception("Failed to connect to MySQL: " . $ex->getMessage());
+            $this->throwError("Failed to connect to MySQL:\t" . $ex->getMessage());
         }
         // Check connection
         if (mysqli_connect_errno()) {
-            $this->debugFile("Failed to connect to MySQL:\t" . mysqli_connect_error());
-            throw new Exception("Failed to connect to MySQL: " . mysqli_connect_error());
+            $this->throwError("Failed to connect to MySQL:\t" . mysqli_connect_error());
         }
     }
 
     /**
-     * Write a log line for debug
+     * Write a log line for debug then throw an error.
      * @param $txt
+     * @throws Exception
      */
-    function debugFile($txt)
+    function throwError($txt)
     {
-        if ($this->logFile == '') return;
+        if ($this->logFile == '') {
+            throw new Exception($txt);
+        }
 
         $fz = @filesize($this->logFile);
 
@@ -223,6 +223,7 @@ class DaoOne
         $now = new DateTime();
         @fwrite($fp, $now->format('c') . "\t" . $txtW . "\n");
         @fclose($fp);
+        throw new Exception($txt);
     }
 
     /**
@@ -242,8 +243,7 @@ class DaoOne
                     // we aren't checking SQL-DCL queries. Also, "insert into" is stopped but "  insert into" not.
                     $ok = false;
                     if (!$continueOnError) {
-                        $this->debugFile("Database is in READ ONLY MODE");
-                        throw new Exception("Database is in READ ONLY MODE");
+                        $this->throwError("Database is in READ ONLY MODE");
                     }
                 }
             }
@@ -251,8 +251,7 @@ class DaoOne
             if ($r === false) {
                 $ok = false;
                 if (!$continueOnError) {
-                    $this->debugFile("Unable to run raw query\t" . $this->lastQuery);
-                    throw new Exception("Unable to run raw query " . $this->lastQuery);
+                    $this->throwError("Unable to run raw query\t" . $this->lastQuery);
                 }
             }
         }
@@ -287,7 +286,7 @@ class DaoOne
      */
     public function commit()
     {
-        if (!$this->transactionOpen) throw new Exception("Transaction not open");
+        if (!$this->transactionOpen) $this->throwError("Transaction not open to commit()");
         $this->transactionOpen = false;
         $this->conn1->commit();
     }
@@ -298,7 +297,7 @@ class DaoOne
      */
     public function rollback()
     {
-        if (!$this->transactionOpen) throw new Exception("Transaction not open");
+        if (!$this->transactionOpen) $this->throwError("Transaction not open  to rollback()");
         $this->transactionOpen = false;
         $this->conn1->rollback();
     }
@@ -318,15 +317,27 @@ class DaoOne
     }
 
     /**
-     * @param $sql
+     * It generates an inner join
+     * @param string $sql Example "tablejoin on table1.field=tablejoin.field"
      * @return DaoOne
      */
     public function join($sql)
     {
         if ($this->from == '') return $this->from($sql);
-        $this->from .= ($sql) ? " inner join $sql" : '';
+        $this->from .= ($sql) ? " inner join $sql " : '';
         return $this;
     }
+
+    /**
+     * Macro of join.
+     * @param $sql
+     * @return DaoOne
+     */
+    public function innerjoin($sql)
+    {
+        return $this->join($sql);
+    }
+
 
     /**
      * @param $sql
@@ -370,7 +381,6 @@ class DaoOne
      */
     public function where($sql, $param = null)
     {
-
         if (is_string($sql)) {
             $this->where[] = $sql;
             if ($param === null) return $this;
@@ -394,13 +404,18 @@ class DaoOne
         }
         return $this;
     }
+
     /**
      * @param string|array $sql
      * @param array $param
      * @return DaoOne
+     * @throws Exception
      */
     public function set($sql, $param = null)
     {
+        if (count($this->where)) {
+            $this->throwError("you can't execute set() after a where()");
+        }
         if (is_string($sql)) {
             $this->set[] = $sql;
             if ($param === null) return $this;
@@ -482,7 +497,7 @@ class DaoOne
 
     /**
      * It returns an array of rows.
-     * @return bool
+     * @return array|bool
      * @throws Exception
      */
     public function toList()
@@ -509,11 +524,12 @@ class DaoOne
         $tmp2 = implode(',$', array_keys($this->whereParamValue));
 
         $tmp3 = '$stmt->bind_param("' . $parType . '",$' . $tmp2 . ');';
+
         if ($parType != "") {
             // Empty means that the query doesn't use parameters. Such as select * from table
             $reval = @eval($tmp3 . '; return true;');
             if (!$reval) {
-                throw new Exception("Error in bind");
+                $this->throwError("Error in bind");
             }
         }
         $this->runQuery($stmt);
@@ -561,19 +577,16 @@ class DaoOne
         if ($this->readonly) {
             if (stripos($query, 'insert ') === 0 || stripos($query, 'update ') === 0 || stripos($query, 'delete ') === 0) {
                 // we aren't checking SQL-DCL queries.
-                $this->debugFile("Database is in READ ONLY MODE");
-                throw new Exception("Database is in READ ONLY MODE");
+                $this->throwError("Database is in READ ONLY MODE");
             }
         }
         try {
             $stmt = $this->conn1->prepare($query);
         } catch (Exception $ex) {
-            $this->debugFile("Failed to prepare:\t" . $ex->getMessage());
-            throw new Exception("Failed to prepare: " . $ex->getMessage());
+            $this->throwError("Failed to prepare:\t" . $ex->getMessage());
         }
         if ($stmt === false) {
-            $this->debugFile("Unable to prepare query\t" . $this->lastQuery);
-            throw new Exception("Unable to prepare query " . $this->lastQuery);
+            $this->throwError("Unable to prepare query\t" . $this->lastQuery);
         }
         return $stmt;
     }
@@ -590,12 +603,10 @@ class DaoOne
             $r = $stmt->execute();
         } catch (Exception $ex) {
 
-            $this->debugFile("Failed to run query\t" . $this->lastQuery . " Cause:" . $ex->getMessage());
-            throw new Exception("Failed to run query: " . $ex->getMessage());
+            $this->throwError("Failed to run query\t" . $this->lastQuery . " Cause:" . $ex->getMessage());
         }
         if ($r === false) {
-            $this->debugFile("exception query\t" . $this->lastQuery);
-            throw new Exception("Unable to run query " . $this->lastQuery);
+            $this->throwError("exception query\t" . $this->lastQuery);
         }
         return true;
     }
@@ -647,6 +658,24 @@ class DaoOne
     }
 
     /**
+     * Executes the query, and returns the first column of the first row in the result set returned by the query. Additional columns or rows are ignored.
+     * @return mixed|null
+     * @throws Exception
+     */
+    public function firstScalar()
+    {
+        /** @var \mysqli_result $rows */
+        $rows = $this->runGen(false);
+        if ($rows === false) return null;
+        while ($row = $rows->fetch_assoc()) {
+            $rows->free_result();
+            return reset($row);
+        }
+        return null;
+    }
+
+
+    /**
      * Returns the last row. It's not recommended. Use instead first() and change the order.
      * @return array|null
      * @throws Exception
@@ -677,8 +706,7 @@ class DaoOne
         if ($this->readonly) {
             if (stripos($rawSql, 'insert ') === 0 || stripos($rawSql, 'update ') === 0 || stripos($rawSql, 'delete ') === 0) {
                 // we aren't checking SQL-DCL queries. Also, "insert into" is stopped but "  insert into" not.
-                $this->debugFile("Database is in READ ONLY MODE");
-                throw new Exception("Database is in READ ONLY MODE");
+                $this->throwError("Database is in READ ONLY MODE");
             }
         }
         $this->lastQuery=$rawSql;
@@ -686,12 +714,10 @@ class DaoOne
             try {
                 $r = $this->conn1->query($rawSql);
             } catch (Exception $ex) {
-                $this->debugFile("Exception raw\t" . $rawSql);
-                throw new Exception("Unable to run raw query " . $rawSql);
+                $this->throwError("Exception raw\t" . $rawSql);
             }
             if ($r === false) {
-                $this->debugFile("Unable to run raw query\t" . $rawSql);
-                throw new Exception("Unable to run raw query " . $rawSql);
+                $this->throwError("Unable to run raw query\t" . $rawSql);
             }
 
             return $r;
@@ -715,7 +741,7 @@ class DaoOne
             // Empty means that the query doesn't use parameters. Such as select * from table
             $reval = @eval($tmp3 . '; return true;');
             if (!$reval) {
-                throw new Exception("Error in bind");
+                $this->throwError("Error in bind");
             }
         }
         $this->runQuery($stmt);
@@ -764,14 +790,17 @@ class DaoOne
     {
         if ($table===null) {
             // using builder. from()->set()->where()->update()
-            $sql="update ".$this->from." ".$this->constructSet('set').' '.$this->constructWhere();
+            if ($this->from=="") $this->throwError("you can't execute an empty update() without a from()");
+            if (count($this->set)===0) $this->throwError("you can't execute an empty update() without a set()");
+            if (count($this->where)===0) $this->throwError("you can't execute an empty update() without a where()");
+            $sql="update ".$this->from." ".$this->constructSet().' '.$this->constructWhere();
             $param=[];
             for($i=0;$i<count($this->whereParamType);$i++) {
                 $param[]=$this->whereParamType[$i];
                 $param[]=$this->whereParamValue['i_'.$i];
             }
-            $this->runRawQuery($sql, $param,true);
             $this->builderReset();
+            $this->runRawQuery($sql, $param,true);
             return $this->affected_rows();
         } else {
             $col = [];
@@ -786,7 +815,7 @@ class DaoOne
                 $this->constructParam($tableDefWhere, $valueWhere, $colWhere, $colT, $param);
             }
             $sql = "update $table set " . implode(',', $col) . " where " . implode(' and ', $colWhere);
-
+            $this->builderReset();
             $this->runRawQuery($sql, $param);
             return $this->insert_id();
         }
@@ -799,6 +828,8 @@ class DaoOne
      * insert('table',['col1','i','col2','s'],[10,'hello world']);
      * // or
      * insert('table',['col1'=>'i','col2'=>'s'],['col1'=>10,'col2'=>'hello world']);
+     * // or
+     * ->set(..)->from('table')->insert();
      * </code>
      * @param string $table
      * @param string[] $tableDef
@@ -809,16 +840,17 @@ class DaoOne
     public function insert($table=null, $tableDef=null, $value = null)
     {
         if ($table===null) {
-            // using builder. from()->where()->delete()
-            $sql="insert into ".$this->from." ".$this->constructInsert("into");
+            // using builder. from()->set()->insert()
+            if ($this->from=="") $this->throwError("you can't execute an empty insert() without a from()");
+            if (count($this->set)===0) $this->throwError("you can't execute an empty insert() without a set()");
+            $sql= /** @lang text */"insert into ".$this->from.' '.$this->constructInsert();
             $param=[];
             for($i=0;$i<count($this->whereParamType);$i++) {
                 $param[]=$this->whereParamType[$i];
                 $param[]=$this->whereParamValue['i_'.$i];
             }
-            echo $sql."<br>";
-            $this->runRawQuery($sql, $param,true);
             $this->builderReset();
+            $this->runRawQuery($sql, $param,true);
             return $this->affected_rows();
         } else {
             $col = [];
@@ -826,6 +858,7 @@ class DaoOne
             $param = [];
             $this->constructParam($tableDef, $value, $col, $colT, $param);
             $sql = "insert into $table (" . implode(',', $col) . ") values(" . implode(',', $colT) . ")";
+            $this->builderReset();
             $this->runRawQuery($sql, $param);
             return $this->insert_id();
         }
@@ -850,14 +883,16 @@ class DaoOne
     {
         if ($table===null) {
             // using builder. from()->where()->delete()
+            if ($this->from=="") $this->throwError("you can't execute an empty delete() without a from()");
+            if (count($this->where)===0) $this->throwError("you can't execute an empty delete() without a where()");
             $sql="delete from ".$this->from." ".$this->constructWhere();
             $param=[];
             for($i=0;$i<count($this->whereParamType);$i++) {
                 $param[]=$this->whereParamType[$i];
                 $param[]=$this->whereParamValue['i_'.$i];
             }
-            $this->runRawQuery($sql, $param,true);
             $this->builderReset();
+            $this->runRawQuery($sql, $param,true);
             return $this->affected_rows();
         } else {
             // using table/tabldefwhere/valuewhere
@@ -866,7 +901,7 @@ class DaoOne
             $param = [];
             $this->constructParam($tableDefWhere, $valueWhere, $colWhere, $colT, $param);
             $sql = "delete from $table where " . implode(' and ', $colWhere);
-
+            $this->builderReset();
             $this->runRawQuery($sql, $param,true);
             return $this->affected_rows();
         }
