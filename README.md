@@ -447,6 +447,7 @@ $dao->from("producttype")
 
 ## Changelist
 
+* 3.7 Added charset.
 * 3.6 More fixes.
 * 3.5 Small fixed.
 * 3.4 DML new features. It allows nested operations 

@@ -9,7 +9,7 @@ use Exception;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 3.6 20180922
+ * @version 3.7 20180922
  * @package eftec
  * @author Jorge Castro Castillo
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -32,6 +32,7 @@ class DaoOne
     var $user;
     var $pwd;
     var $db;
+    var $charset='';
     //<editor-fold desc="date fields">
     /** @var  \mysqli */
     var $conn1;
@@ -84,14 +85,30 @@ class DaoOne
      * @param string $pwd Ex. 12345
      * @param string $db Ex. mybase
      * @param string $logFile Optional  log file. Example c:\\temp\log.log
+     * @param string $charset Example utf8mb4
      */
-    public function __construct($server, $user, $pwd, $db, $logFile = "")
+    public function __construct($server, $user, $pwd, $db, $logFile = "",$charset='')
     {
         $this->server = $server;
         $this->user = $user;
         $this->pwd = $pwd;
         $this->db = $db;
         $this->logFile = $logFile;
+        $this->charset=$charset;
+    }
+
+    /**
+     * It changes default database.
+     * @param $dbName
+     */
+    public function db($dbName) {
+        $this->db=$dbName;
+        $this->conn1->select_db($dbName);
+    }
+
+    public function setCharset($charset) {
+        $this->charset=$charset;
+        $this->conn1->set_charset($this->charset);
     }
 
     /**
@@ -185,6 +202,9 @@ class DaoOne
         }
         try {
             $this->conn1 = new \mysqli($this->server, $this->user, $this->pwd, $this->db);
+            if ($this->charset!='') {
+                $this->setCharset($this->charset);
+            }
         } catch (Exception $ex) {
             $this->throwError("Failed to connect to MySQL:\t" . $ex->getMessage());
         }
