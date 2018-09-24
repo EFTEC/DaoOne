@@ -447,6 +447,7 @@ $dao->from("producttype")
 
 ## Changelist
 
+* 3.9 2018-09-24 Some fixes
 * 3.7 Added charset.
 * 3.6 More fixes.
 * 3.5 Small fixed.
