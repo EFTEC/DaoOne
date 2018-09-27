@@ -1,7 +1,7 @@
 {
     "name": "eftec/daoone",
     "description": "Data Access Object wrapper in a single Class",
-    "version": "3.9",
+    "version": "3.11",
     "type": "library",
     "keywords": [
         "dao",
@@ -23,7 +23,8 @@
       }
     },
     "require": {
-        "ext-mysqli": "*"
+        "ext-mysqli": "*",
+        "ext-json": "*"
     }
 }
 

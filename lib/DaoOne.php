@@ -9,7 +9,7 @@ use Exception;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 3.10 20180925
+ * @version 3.11 20180927
  * @package eftec
  * @author Jorge Castro Castillo
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -17,39 +17,19 @@ use Exception;
  */
 class DaoOne
 {
-    /**
-     * @param mixed $txt
-     * @param $type 0=sql->text, 1=text->sql,  2=text->phpDate  , 3=phpDate->text
-     */
-    const DATESQL2TEXT = 0;
-    const DATETEXT2SQL = 1;
-    const DATETEXT2PHP = 2;
-    const DATEPHP2TEXT = 3;
     /** @var string|null Static date (when the date is empty) */
     static $dateEpoch = "2000-01-01 00:00:00.00000";
+    //<editor-fold desc="server fields">
     /** @var string server ip. Ex. 127.0.0.1 */
     var $server;
     var $user;
     var $pwd;
     var $db;
     var $charset='';
-    //<editor-fold desc="date fields">
     /** @var  \mysqli */
     var $conn1;
     //</editor-fold>
     //<editor-fold desc="encryption fields">
-    /** @var  bool */
-    var $transactionOpen;
-    /** @var bool if the database is in READ ONLY mode or not. If true then we must avoid to write in the database. */
-    var $readonly = false;
-    /** @var string full filename of the log file. If it's empty then it doesn't store a log file. The log file is limited to 1mb */
-    var $logFile = "";
-    /** @var string last query executed */
-    var $lastQuery;
-    var $lastParam=[];
-    var $dateFormat = 'aa';
-    //</editor-fold>
-    //<editor-fold desc="query builder fields">
     /** @var bool Encryption enabled */
     var $encEnabled = false;
     /** @var string Encryption password */
@@ -58,9 +38,21 @@ class DaoOne
     var $encSalt = '';
     /** @var string Encryption method, See http://php.net/manual/en/function.openssl-get-cipher-methods.php */
     var $encMethod = '';
+    //</editor-fold>
+    /** @var  bool */
+    var $transactionOpen;
+    /** @var bool if the database is in READ ONLY mode or not. If true then we must avoid to write in the database. */
+    var $readonly = false;
+    /** @var string full filename of the log file. If it's empty then it doesn't store a log file. The log file is limited to 1mb */
+    var $logFile = "";
+    /** @var int 0=no log (but error), 1=normal,2=verbose */
+    public $logLevel=0;
+    /** @var string last query executed */
+    var $lastQuery;
+    var $lastParam=[];
+    var $dateFormat = 'aa';
 
-    public $logLevel=0; // 0=no log (but error), 1=normal,2=verbose
-
+    //<editor-fold desc="query builder fields">
     private $select = '';
     private $from = '';
     /** @var array */
@@ -73,16 +65,14 @@ class DaoOne
     /** @var array */
     private $set = array();
     private $group = '';
-    //</editor-fold>
     /** @var array */
     private $having = array();
     private $limit = '';
 
-    // if the database is in read only mode.
+
     private $distinct = '';
     private $order = '';
-
-
+    //</editor-fold>
 
     /**
      * ClassUtilDB constructor.
@@ -116,6 +106,114 @@ class DaoOne
         $this->charset=$charset;
         $this->conn1->set_charset($this->charset);
     }
+
+
+    public function readonly()
+    {
+        return $this->readonly;
+    }
+
+    /**
+     * Connects to the database.
+     * @throws \Exception
+     */
+    public function connect()
+    {
+        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+        if ($this->conn1 != null) {
+            $this->throwError("Already connected");
+        }
+        try {
+            $this->conn1 = new \mysqli($this->server, $this->user, $this->pwd, $this->db);
+            if ($this->charset!='') {
+                $this->setCharset($this->charset);
+            }
+        } catch (Exception $ex) {
+            $this->throwError("Failed to connect to MySQL:\t" . $ex->getMessage());
+        }
+        // Check connection
+        if (mysqli_connect_errno()) {
+            $this->throwError("Failed to connect to MySQL:\t" . mysqli_connect_error());
+        }
+    }
+
+
+    /**
+     * Run many  unprepared query separated by ;
+     * @param $listSql
+     * @param bool $continueOnError
+     * @return bool
+     * @throws Exception
+     */
+    public function runMultipleRawQuery($listSql, $continueOnError = false)
+    {
+        $arr = explode(';', $listSql);
+        $ok = true;
+        foreach ($arr as $rawSql) {
+            if ($this->readonly) {
+                if (stripos($rawSql, 'insert ') === 0 || stripos($rawSql, 'update ') === 0 || stripos($rawSql, 'delete ') === 0) {
+                    // we aren't checking SQL-DCL queries. Also, "insert into" is stopped but "  insert into" not.
+                    $ok = false;
+                    if (!$continueOnError) {
+                        $this->throwError("Database is in READ ONLY MODE");
+                    }
+                }
+            }
+            $r = $this->conn1->query($rawSql);
+            if ($r === false) {
+                $ok = false;
+                if (!$continueOnError) {
+                    $this->throwError("Unable to run raw query\t" . $this->lastQuery);
+                }
+            }
+        }
+        return $ok;
+    }
+
+
+
+    //<editor-fold desc="transaction functions">
+    /**
+     * @param int $flag MYSQLI_TRANS_START_READ_ONLY,MYSQLI_TRANS_START_READ_WRITE,MYSQLI_TRANS_START_WITH_CONSISTENT_SNAPSHOT
+     * @return bool
+     */
+    public function startTransaction($flag = MYSQLI_TRANS_START_READ_WRITE)
+    {
+        if ($this->transactionOpen) return false;
+        $this->transactionOpen = true;
+        $this->conn1->begin_transaction($flag);
+        return true;
+    }
+
+    /**
+     * Commit and close a transaction
+     * @param bool $throw
+     * @return bool
+     * @throws Exception
+     */
+    public function commit($throw=true)
+    {
+        if (!$this->transactionOpen && $throw) $this->throwError("Transaction not open to commit()");
+        $this->transactionOpen = false;
+        return @$this->conn1->commit();
+    }
+
+    /**
+     * Rollback and close a transaction
+     * @param bool $throw
+     * @return bool
+     * @throws Exception
+     */
+    public function rollback($throw=true)
+    {
+        if (!$this->transactionOpen && $throw) $this->throwError("Transaction not open  to rollback()");
+        $this->transactionOpen = false;
+        return @$this->conn1->rollback();
+    }
+    //</editor-fold>
+
+
+    //<editor-fold desc="Date functions" defaultstate="collapsed" >
 
     /**
      * Conver date from php -> mysql
@@ -172,179 +270,9 @@ class DaoOne
         }
     }
 
-    /**
-     * @param string $password
-     * @param string $salt
-     * @param string $encMethod . Example : AES-128-CTR See http://php.net/manual/en/function.openssl-get-cipher-methods.php
-     * @throws Exception
-     */
-    public function setEncryption($password, $salt, $encMethod)
-    {
-        if (!extension_loaded('openssl')) {
-            $this->encEnabled = false;
-            $this->throwError("OpenSSL not loaded, encryption disabled");
-        } else {
-            $this->encEnabled = true;
-            $this->encPassword = $password;
-            $this->encSalt = $salt;
-            $this->encMethod = $encMethod;
-        }
-    }
+    //</editor-fold>
 
-    public function readonly()
-    {
-        return $this->readonly;
-    }
-
-    /**
-     * Connects to the database.
-     * @throws \Exception
-     */
-    public function connect()
-    {
-        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
-        if ($this->conn1 != null) {
-            $this->throwError("Already connected");
-        }
-        try {
-            $this->conn1 = new \mysqli($this->server, $this->user, $this->pwd, $this->db);
-            if ($this->charset!='') {
-                $this->setCharset($this->charset);
-            }
-        } catch (Exception $ex) {
-            $this->throwError("Failed to connect to MySQL:\t" . $ex->getMessage());
-        }
-        // Check connection
-        if (mysqli_connect_errno()) {
-            $this->throwError("Failed to connect to MySQL:\t" . mysqli_connect_error());
-        }
-    }
-    function debugFile($txt,$level='INFO') {
-        if ($this->logFile == '') {
-            return;
-        }
-        $fz = @filesize($this->logFile);
-
-        if (is_object($txt) || is_array($txt)) {
-            $txtW = print_r($txt, true);
-        } else {
-            $txtW = $txt;
-        }
-        if ($fz > 10000000) {
-            // mas de 10mb = reducirlo a cero.
-            $fp = @fopen($this->logFile, 'w');
-        } else {
-            $fp = @fopen($this->logFile, 'a');
-        }
-        if ($this->logLevel==2) {
-            $txtW.=" param:".json_encode($this->lastParam);
-        }
-
-        $txtW = str_replace("\r\n", " ", $txtW);
-        $txtW = str_replace("\n", " ", $txtW);
-        $now = new DateTime();
-        @fwrite($fp, $now->format('c')."\t".$level."\t".$txtW . "\n");
-        @fclose($fp);
-    }
-
-    /**
-     * Write a log line for debug then throw an error.
-     * @param $txt
-     * @throws Exception
-     */
-    function throwError($txt)
-    {
-        if ($this->logFile == '') {
-            throw new Exception($txt);
-        }
-        $this->debugFile($txt,'ERROR');
-
-        throw new Exception($txt);
-    }
-
-    /**
-     * Run many  unprepared query separated by ;
-     * @param $listSql
-     * @param bool $continueOnError
-     * @return bool
-     * @throws Exception
-     */
-    public function runMultipleRawQuery($listSql, $continueOnError = false)
-    {
-        $arr = explode(';', $listSql);
-        $ok = true;
-        foreach ($arr as $rawSql) {
-            if ($this->readonly) {
-                if (stripos($rawSql, 'insert ') === 0 || stripos($rawSql, 'update ') === 0 || stripos($rawSql, 'delete ') === 0) {
-                    // we aren't checking SQL-DCL queries. Also, "insert into" is stopped but "  insert into" not.
-                    $ok = false;
-                    if (!$continueOnError) {
-                        $this->throwError("Database is in READ ONLY MODE");
-                    }
-                }
-            }
-            $r = $this->conn1->query($rawSql);
-            if ($r === false) {
-                $ok = false;
-                if (!$continueOnError) {
-                    $this->throwError("Unable to run raw query\t" . $this->lastQuery);
-                }
-            }
-        }
-        return $ok;
-    }
-
-    /**
-     * Returns the last error.
-     * @return string
-     */
-    public function lastError()
-    {
-        if ($this->conn1 == null) return "No connection";
-        return $this->conn1->error;
-    }
-
-    /**
-     * @param int $flag MYSQLI_TRANS_START_READ_ONLY,MYSQLI_TRANS_START_READ_WRITE,MYSQLI_TRANS_START_WITH_CONSISTENT_SNAPSHOT
-     * @return bool
-     */
-    public function startTransaction($flag = MYSQLI_TRANS_START_READ_WRITE)
-    {
-        if ($this->transactionOpen) return false;
-        $this->transactionOpen = true;
-        $this->conn1->begin_transaction($flag);
-        return true;
-    }
-
-    /**
-     * Commit and close a transaction
-     * @param bool $throw
-     * @return bool
-     * @throws Exception
-     */
-    public function commit($throw=true)
-    {
-        if (!$this->transactionOpen && $throw) $this->throwError("Transaction not open to commit()");
-        $this->transactionOpen = false;
-        return @$this->conn1->commit();
-    }
-
-    /**
-     * Rollback and close a transaction
-     * @param bool $throw
-     * @return bool
-     * @throws Exception
-     */
-    public function rollback($throw=true)
-    {
-        if (!$this->transactionOpen && $throw) $this->throwError("Transaction not open  to rollback()");
-        $this->transactionOpen = false;
-        return @$this->conn1->rollback();
-    }
-
-
-    //<editor-fold desc="Date functions" defaultstate="collapsed" >
-
+    //<editor-fold desc="Query Builder functions" defaultstate="collapsed" >
     /**
      * @param $sql
      * @return DaoOne
@@ -388,9 +316,6 @@ class DaoOne
         $this->from = ($sql) ? $sql: '';
         return $this;
     }
-    //</editor-fold>
-
-    //<editor-fold desc="Query Builder functions" defaultstate="collapsed" >
 
     /**
      * @param $sql
@@ -624,6 +549,7 @@ class DaoOne
         try {
             $stmt = $this->conn1->prepare($query);
         } catch (Exception $ex) {
+            $stmt=false;
             $this->throwError("Failed to prepare:".$ex->getMessage());
         }
         if ($stmt === false) {
@@ -643,7 +569,7 @@ class DaoOne
         try {
             $r = $stmt->execute();
         } catch (Exception $ex) {
-
+            $r=false;
             $this->throwError("Failed to run query\t" . $this->lastQuery . " Cause:" . $ex->getMessage());
         }
         if ($r === false) {
@@ -752,6 +678,9 @@ class DaoOne
         }
         $this->lastParam=$param;
         $this->lastQuery=$rawSql;
+        if ($this->logLevel>=2) {
+            $this->debugFile($rawSql,"DEBUG");
+        }
         if ($param === null) {
             try {
                 $rows = $this->conn1->query($rawSql);
@@ -1098,9 +1027,30 @@ class DaoOne
     //</editor-fold>
 
     //<editor-fold desc="Encryption functions" defaultstate="collapsed" >
+    /**
+     * @param string $password
+     * @param string $salt
+     * @param string $encMethod . Example : AES-128-CTR See http://php.net/manual/en/function.openssl-get-cipher-methods.php
+     * @throws Exception
+     */
+    public function setEncryption($password, $salt, $encMethod)
+    {
+        if (!extension_loaded('openssl')) {
+            $this->encEnabled = false;
+            $this->throwError("OpenSSL not loaded, encryption disabled");
+        } else {
+            $this->encEnabled = true;
+            $this->encPassword = $password;
+            $this->encSalt = $salt;
+            $this->encMethod = $encMethod;
+        }
+    }
 
-
-
+    /**
+     * It is a two way encryption.
+     * @param $data
+     * @return string
+     */
     public function encrypt($data)
     {
         if (!$this->encEnabled) return $data; // no encryption
@@ -1108,10 +1058,12 @@ class DaoOne
         $encrypted_string = bin2hex($iv) . openssl_encrypt($this->encSalt . $data, $this->encMethod, $this->encPassword, 0, $iv);
         return urlencode($encrypted_string);
     }
-    //</editor-fold>
 
-    //<editor-fold desc="Log functions" defaultstate="collapsed" >
-
+    /**
+     * It is a two way decryption
+     * @param $data
+     * @return bool|string
+     */
     public function decrypt($data)
     {
         if (!$this->encEnabled) return $data; // no encryption
@@ -1124,6 +1076,60 @@ class DaoOne
             return false;
         }
     }
+
+    //</editor-fold>
+
+    //<editor-fold desc="Log functions" defaultstate="collapsed" >
+    /**
+     * Returns the last error.
+     * @return string
+     */
+    public function lastError()
+    {
+        if ($this->conn1 == null) return "No connection";
+        return $this->conn1->error;
+    }
+    /**
+     * Write a log line for debug then throw an error.
+     * @param $txt
+     * @throws Exception
+     */
+    function throwError($txt)
+    {
+        $this->builderReset(); // it resets the chain if any.
+        $this->debugFile($txt,'ERROR');
+
+        throw new Exception($txt);
+    }
+    function debugFile($txt,$level='INFO') {
+        if ($this->logFile == '') {
+            return; // debug file is disabled.
+        }
+        $fz = @filesize($this->logFile);
+
+        if (is_object($txt) || is_array($txt)) {
+            $txtW = print_r($txt, true);
+        } else {
+            $txtW = $txt;
+        }
+        if ($fz > 10000000) {
+            // mas de 10mb = reducirlo a cero.
+            $fp = @fopen($this->logFile, 'w');
+        } else {
+            $fp = @fopen($this->logFile, 'a');
+        }
+        if ($this->logLevel==2) {
+            $txtW.=" param:".json_encode($this->lastParam);
+        }
+
+        $txtW = str_replace("\r\n", " ", $txtW);
+        $txtW = str_replace("\n", " ", $txtW);
+        $now = new DateTime();
+        @fwrite($fp, $now->format('c')."\t".$level."\t".$txtW . "\n");
+        @fclose($fp);
+    }
+
+
     //</editor-fold>
 
 }

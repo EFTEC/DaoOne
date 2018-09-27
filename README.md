@@ -496,6 +496,7 @@ $dao->from("producttype")
 
 ## Changelist
 
+* 3.11 2018-09-27 Cleaned the code. If it throws an exception, then the chain is reset.
 * 3.9 2018-09-24 Some fixes
 * 3.7 Added charset.
 * 3.6 More fixes.
