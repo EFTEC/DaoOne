@@ -2,6 +2,41 @@
 
 DaoOne. It's a simple wrapper for Mysqli
 
+This library is as fast as possible. Most of the operations are simple string/array managements.
+
+Turn this 
+
+```$stmt = $mysqli->prepare("SELECT * FROM myTable WHERE name = ?");
+$stmt->bind_param("s", $_POST['name']);
+$stmt->execute();
+$result = $stmt->get_result();
+if($result->num_rows === 0) exit('No rows');
+while($row = $result->fetch_assoc()) {
+  $ids[] = $row['id'];
+  $names[] = $row['name'];
+  $ages[] = $row['age'];
+}
+var_export($ages);
+$stmt->close();
+```
+
+into this
+
+```$stmt = $mysqli->prepare("SELECT * FROM myTable WHERE name = ?");
+$stmt->bind_param("s", $_POST['name']);
+$stmt->execute();
+$result = $stmt->get_result();
+if($result->num_rows === 0) exit('No rows');
+while($row = $result->fetch_assoc()) {
+  $ids[] = $row['id'];
+  $names[] = $row['name'];
+  $ages[] = $row['age'];
+}
+var_export($ages);
+$stmt->close();
+```
+
+
 [![Packagist](https://img.shields.io/packagist/v/eftec/daoone.svg)](https://packagist.org/packages/eftec/daoone)
 [![Maintenance](https://img.shields.io/maintenance/yes/2018.svg)]()
 [![composer](https://img.shields.io/badge/composer-%3E1.6-blue.svg)]()
@@ -51,7 +86,7 @@ Add to composer.json the next requirement, then update composer.
 ```json
   {
       "require": {
-        "eftec/daoone": "2.*"
+        "eftec/daoone": "^3.9"
       }
   }
 ```
@@ -98,6 +133,8 @@ $stmt->bind_param("s",$productName); // s stand for string. Also i =integer, d =
 $dao->runQuery($stmt);
 ```
 
+> note: you could also insert using a procedural chain [insert($table,$schema,[$values])](#insert--table--schema---values--)
+
 ### Run a prepared query with parameters.
 ```php
 $dao->runRawQuery('insert into `product` (name) values(?)'
@@ -107,6 +144,7 @@ $dao->runRawQuery('insert into `product` (name) values(?)'
 
 
 ### Return data (first method)
+It returns a mysqli_statement.
 
 ```php
     $sql="select * from `product` order by name";
@@ -118,9 +156,10 @@ $dao->runRawQuery('insert into `product` (name) values(?)'
     }
     
 ```    
-
+> This statement must be processed manually.
 
 ### Return data (second method)
+It returns an associative array.
 
 ```php
     $sql="select * from `product` order by name";
@@ -142,9 +181,19 @@ try {
     $dao->runQuery($stmt);
     $dao->commit(); // transaction ok
 } catch (Exception $e) {
-    $dao->rollback(); // error, transaction cancelled.
+    $dao->rollback(false); // error, transaction cancelled.
 }
 ```   
+#### startTransaction()
+It starts a transaction
+
+#### commit($throw=true)
+It commits a transaction. 
+* If $throw is true then it throws an exception if the transaction fails to commit.  Otherwise, it does not.
+
+#### rollback($throw=true)
+It rollbacks a transaction. 
+* If $throw is true then it throws an exception if the transaction fails to rollback.  If false, then it ignores if the rollback fail or if the transaction is not open.
 
 ## Query Builder (DQL)
 You could also build a procedural query.

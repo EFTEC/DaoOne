@@ -21,6 +21,9 @@
       "psr-4": {
         "eftec\\": "lib/"
       }
+    },
+    "require": {
+        "ext-mysqli": "*"
     }
 }
 

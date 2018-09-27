@@ -18,16 +18,119 @@ try {
     echo $dao->lastError()."-".$e->getMessage()."<br>";
     die(1);
 }
-$sqlT1="CREATE TABLE `typetable` (
-    `type` INT NOT NULL,
-    `name` VARCHAR(45) NULL,
-    PRIMARY KEY (`type`));";
+// creating tables
 
-$sqlT2="CREATE TABLE `producttype` (
-    `idproducttype` INT NOT NULL,
+$sqlT1="CREATE TABLE `myproducts` (
+    `idproduct` INT NOT NULL,
     `name` VARCHAR(45) NULL,
-    `type` int not NULL,
-    PRIMARY KEY (`idproducttype`));";
+    `type` VARCHAR(45) NULL,
+    `id_category` INT NOT NULL,
+    PRIMARY KEY (`idproduct`));";
+
+try {
+    $dao->runRawQuery($sqlT1);
+} catch (Exception $e) {
+    echo $e->getMessage()."<br>";
+}
+
+$sqlT2="CREATE TABLE `product_category` (
+    `id_category` INT NOT NULL,
+    `catname` VARCHAR(45) NULL,
+    PRIMARY KEY (`id_category`));";
+
+try {
+    $dao->runRawQuery($sqlT2);
+} catch (Exception $e) {
+    echo $e->getMessage()."<br>";
+}
+
+// adding some data
+try {
+    $dao->set(['id_category' => 1, 'catname' => 'cheap'])
+        ->from('product_category')->insert();
+    $dao->set(['id_category'=>2,'catname'=>'normal'])
+        ->from('product_category')->insert();
+    $dao->set(['id_category'=>3,'catname'=>'expensive'])
+        ->from('product_category')->insert();
+} catch (Exception $e) {
+}
+// adding categories
+try {
+    $dao->set(['idproduct'=>1,'name'=>'cocacola'
+        ,'type'=>'drink','id_category'=>1])
+        ->from("myproducts")->insert();
+    $dao->set(['idproduct'=>2,'name'=>'fanta'
+        ,'type'=>'drink','id_category'=>1])
+        ->from("myproducts")->insert();
+    $dao->set(['idproduct'=>3,'name'=>'sprite'
+        ,'type'=>'drink','id_category'=>1])
+        ->from("myproducts")->insert();
+    $dao->set(['idproduct'=>4,'name'=>'iphone'
+        ,'type'=>'phone','id_category'=>2])
+        ->from("myproducts")->insert();
+    $dao->set(['idproduct'=>5,'name'=>'galaxy note'
+        ,'type'=>'phone','id_category'=>2])
+        ->from("myproducts")->insert();
+    $dao->set(['idproduct'=>6,'name'=>'xiami'
+        ,'type'=>'phone','id_category'=>2])
+        ->from("myproducts")->insert();
+    $dao->set(['idproduct'=>7,'name'=>'volvo',
+        'type'=>'car','id_category'=>3])
+        ->from("myproducts")->insert();
+    $dao->set(['idproduct'=>8,'name'=>'bmw'
+        ,'type'=>'car','id_category'=>3])
+        ->from("myproducts")->insert();
+} catch (Exception $e) {
+}
+
+// list products
+$products=$dao->runRawQuery("select * from myproducts",null,true);
+echo Collection::generateTable($products);
+
+// Listing using procedure call
+$products=$dao->select("*")->from("myproducts")->toList();
+echo Collection::generateTable($products);
+
+// list join (we could even add having()
+$products=$dao->select("*")->from("myproducts my")
+    ->join("product_category  p on my.id_category=p.id_category")->toList();
+echo Collection::generateTable($products);
+// Let's clean the join
+$products=$dao->select("name,type,catname")->from("myproducts my")
+    ->join("product_category  p on my.id_category=p.id_category")->toList();
+echo Collection::generateTable($products);
+
+// list join order
+$products=$dao->select("name,type,catname")->from("myproducts my")
+    ->join("product_category  p on my.id_category=p.id_category")
+    ->order("name")->toList();
+echo Collection::generateTable($products);
+
+// We also could obtain the first value (or the last)
+$products=$dao->select("name,type,catname")->from("myproducts my")
+    ->join("product_category  p on my.id_category=p.id_category")->first();
+echo Collection::generateTable($products);
+
+// We also could obtain an escalar. It's useful if you want, for example, returns the number of elements.
+$products=$dao->select("count(*)")->from("myproducts my")
+    ->join("product_category  p on my.id_category=p.id_category")->firstScalar();
+echo Collection::generateTable($products);
+
+// And, we could add limit
+$products=$dao->select("*")->from("myproducts my")
+    ->join("product_category  p on my.id_category=p.id_category")
+    ->order("name")->limit("1,3")->toList();
+echo Collection::generateTable($products);
+
+// And we could group
+$products=$dao->select("catname,count(*) count")
+    ->from("myproducts my")
+    ->join("product_category  p on my.id_category=p.id_category")
+    ->group("catname")
+    ->toList();
+echo Collection::generateTable($products);
+
+die(1);
 
 $now=new DateTime();
 // running a raw query (unprepared statement)
@@ -69,7 +172,7 @@ try {
     echo "<hr>toList using associative array:";
     $results = $dao->select("*")->from("producttype")
         ->where(['name'=>'s','idproducttype'=>'i'],
-        ['name'=>'Coca-Cola','idproducttype'=>1])
+            ['name'=>'Coca-Cola','idproducttype'=>1])
         ->toList();
     echo $dao->lastQuery;
     echo Collection::generateTable($results);

@@ -9,7 +9,7 @@ use Exception;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 3.9 20180924
+ * @version 3.10 20180925
  * @package eftec
  * @author Jorge Castro Castillo
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -318,24 +318,28 @@ class DaoOne
 
     /**
      * Commit and close a transaction
+     * @param bool $throw
+     * @return bool
      * @throws Exception
      */
-    public function commit()
+    public function commit($throw=true)
     {
-        if (!$this->transactionOpen) $this->throwError("Transaction not open to commit()");
+        if (!$this->transactionOpen && $throw) $this->throwError("Transaction not open to commit()");
         $this->transactionOpen = false;
-        $this->conn1->commit();
+        return @$this->conn1->commit();
     }
 
     /**
      * Rollback and close a transaction
+     * @param bool $throw
+     * @return bool
      * @throws Exception
      */
-    public function rollback()
+    public function rollback($throw=true)
     {
-        if (!$this->transactionOpen) $this->throwError("Transaction not open  to rollback()");
+        if (!$this->transactionOpen && $throw) $this->throwError("Transaction not open  to rollback()");
         $this->transactionOpen = false;
-        $this->conn1->rollback();
+        return @$this->conn1->rollback();
     }
 
 
@@ -735,7 +739,7 @@ class DaoOne
      * @param string $rawSql
      * @param array|null $param
      * @param bool $returnArray
-     * @return bool|\mysqli_result
+     * @return bool|\mysqli_result|array
      * @throws Exception
      */
     public function runRawQuery($rawSql, $param = null, $returnArray = true)
@@ -750,15 +754,18 @@ class DaoOne
         $this->lastQuery=$rawSql;
         if ($param === null) {
             try {
-                $r = $this->conn1->query($rawSql);
+                $rows = $this->conn1->query($rawSql);
             } catch (Exception $ex) {
                 $this->throwError("Exception raw\t" . $rawSql);
             }
-            if ($r === false) {
+            if ($rows === false) {
                 $this->throwError("Unable to run raw query\t" . $rawSql);
             }
-
-            return $r;
+            if ($returnArray && $rows instanceof \mysqli_result) {
+                return $rows->fetch_all(MYSQLI_ASSOC);
+            } else {
+                return $rows;
+            }
         }
         // the where has parameters.
         $stmt = $this->prepare($rawSql);
@@ -785,7 +792,7 @@ class DaoOne
         $this->runQuery($stmt);
         $rows = $stmt->get_result();
         $stmt->close();
-        if ($returnArray && $rows) {
+        if ($returnArray && $rows instanceof \mysqli_result) {
             return $rows->fetch_all(MYSQLI_ASSOC);
         } else {
             return $rows;
