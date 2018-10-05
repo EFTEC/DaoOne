@@ -703,21 +703,10 @@ class DaoOne
 
         for ($i = 0; $i < count($param); $i += 2) {
             $parType .= $param[$i];
-            $values['i_' . $i] = $param[$i + 1];
+            $values[] = $param[$i + 1];
         }
-        // set values
-        foreach ($values as $key => $value) {
-            $$key = $value;
-        }
-        $tmp2 = implode(',$', array_keys($values));
-        $tmp3 = '$stmt->bind_param("' . $parType . '",$' . $tmp2 . ');';
-        if ($parType != "") {
-            // Empty means that the query doesn't use parameters. Such as select * from table
-            $reval = @eval($tmp3 . '; return true;');
-            if (!$reval) {
-                $this->throwError("Error in bind");
-            }
-        }
+        $stmt->bind_param($parType, ...$values);
+
         $this->runQuery($stmt);
         $rows = $stmt->get_result();
         $stmt->close();
