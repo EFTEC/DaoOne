@@ -29,7 +29,7 @@ try {
 
 
 try {
-    echo "<h1>Table insert (it's ok if it fails if exists):</h1>";
+    echo "<h1>Table insert (it's ok if it fails because it could exist):</h1>";
     $dao->runRawQuery('insert into `typetable`(`type`,`name`) values(?,?)'
         ,array('i',1,'s','Drink'));
     echo $dao->lastQuery."<br>";

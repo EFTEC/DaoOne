@@ -32,7 +32,7 @@ $sqlT2="CREATE TABLE `producttype` (
 $now=new DateTime();
 // running a raw query (unprepared statement)
 try {
-    echo "<h1>Table creation (it's ok if it fails if exists):</h1>";
+    echo "<h1>Table creation (it's ok if it fails because it could exist):</h1>";
     $dao->runRawQuery($sqlT1);
     echo $dao->lastQuery."<br>";
     $dao->runRawQuery($sqlT2);
@@ -48,6 +48,12 @@ try {
     $results = $dao->select("*")->from("producttype")
         ->where('name=?', ['s', 'Coca-Cola'])
         ->where('idproducttype=?', ['i', 1])
+        ->toList();
+    echo $dao->lastQuery;
+    echo Collection::generateTable($results);
+
+    echo "<hr>toList without where:";
+    $results = $dao->select("*")->from("producttype")
         ->toList();
     echo $dao->lastQuery;
     echo Collection::generateTable($results);

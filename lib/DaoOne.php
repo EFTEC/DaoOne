@@ -9,7 +9,7 @@ use Exception;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 3.11 20180927
+ * @version 3.12 20180929
  * @package eftec
  * @author Jorge Castro Castillo
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -483,25 +483,22 @@ class DaoOne
         /** @var \mysqli_stmt $stmt */
         $stmt = $this->prepare($sql);
         $parType = implode('', $this->whereParamType);
-        foreach ($this->whereParamValue as $key => $value) {
-            $$key = $value;
-        }
-        $tmp2 = implode(',$', array_keys($this->whereParamValue));
-
-        $tmp3 = '$stmt->bind_param("' . $parType . '",$' . $tmp2 . ');';
-
-        if ($parType != "") {
-            // Empty means that the query doesn't use parameters. Such as select * from table
-            $reval = @eval($tmp3 . '; return true;');
+        $values = array_values($this->whereParamValue);
+        if ($parType) {
+            $reval = $stmt->bind_param($parType, ...$values);
             if (!$reval) {
                 $this->throwError("Error in bind");
             }
         }
+
         $this->runQuery($stmt);
         $rows = $stmt->get_result();
         $stmt->close();
 
         $this->builderReset();
+
+
+
         if ($returnArray) {
             $r = $rows->fetch_all(MYSQLI_ASSOC);
             $rows->free_result();
@@ -682,6 +679,7 @@ class DaoOne
             $this->debugFile($rawSql,"DEBUG");
         }
         if ($param === null) {
+            // the "where" chain doesn't have parameters.
             try {
                 $rows = $this->conn1->query($rawSql);
             } catch (Exception $ex) {
@@ -696,7 +694,7 @@ class DaoOne
                 return $rows;
             }
         }
-        // the where has parameters.
+        // the "where" has parameters.
         $stmt = $this->prepare($rawSql);
         $parType = '';
         $values = [];
@@ -814,7 +812,7 @@ class DaoOne
             }
             $this->builderReset();
             $this->runRawQuery($sql, $param,true);
-            return $this->affected_rows();
+            return $this->insert_id();
         } else {
             $col = [];
             $colT = [];

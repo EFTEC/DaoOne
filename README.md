@@ -496,6 +496,8 @@ $dao->from("producttype")
 
 ## Changelist
 
+* 3.13 2018-10-05 Changed command eval to bind_param( ...)
+* 3.12 2018-09-29 Fixed a bug with insert() it now returns the last identity.
 * 3.11 2018-09-27 Cleaned the code. If it throws an exception, then the chain is reset.
 * 3.9 2018-09-24 Some fixes
 * 3.7 Added charset.
