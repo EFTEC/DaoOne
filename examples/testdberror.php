@@ -2,13 +2,18 @@
 
 use eftec\DaoOne;
 
+
 include "../vendor/autoload.php";
 
 
 // connecting to database sakila at 127.0.0.1 with user root and password abc.123
 
 
+
 $dao=new DaoOne("127.0.0.1","root","abc.123","sakilaxxxx","logdaoone.txt");
+
+$dao->throwOnError=false;
+
 try {
     echo "<h1>connection error</h1>";
     $dao->connect();
@@ -17,6 +22,24 @@ try {
     echo "<h1>connection error:</h1>";
     echo $dao->lastError()."-".$e->getMessage()."<br>";
 }
+
+
+try {
+    $dao->select('1')->from('dual')->toList();
+    $dao->runRawQuery("select 1 from dual");
+} catch (Exception $e) {
+    echo "<h1>select 1 from dual failed:</h1>";
+    echo "Last Error:".$dao->lastError()."- GetMessage:".$e->getMessage()."<br>";
+}
+
+
+echo "Status:";
+if (!$dao->isOpen) {
+    echo "<img style='width: 14px; height: 14px;' src='https://assets-cdn.github.com/images/icons/emoji/unicode/274c.png'/><br>";
+} else {
+    echo "<img style='width: 14px; height: 14px;'  src='https://assets-cdn.github.com/images/icons/emoji/unicode/2714.png'/><br>";
+}
+
 
 $dao=new DaoOne("127.0.0.1","root","abc.123","sakila","logdaoone.txt");
 try {
@@ -28,6 +51,16 @@ try {
     echo $dao->lastError()."-".$e->getMessage()."<br>";
     die(1);
 }
+
+
+
+echo "Status:";
+if (!$dao->isOpen) {
+    echo "<img style='width: 14px; height: 14px;' src='https://assets-cdn.github.com/images/icons/emoji/unicode/274c.png'/><br>";
+} else {
+    echo "<img style='width: 14px; height: 14px;'  src='https://assets-cdn.github.com/images/icons/emoji/unicode/2714.png'/><br>";
+}
+
 $sql="CREATE TABLE `product` (
   `idproduct` INT NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(45) NULL,

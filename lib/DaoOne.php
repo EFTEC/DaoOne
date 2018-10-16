@@ -9,7 +9,7 @@ use Exception;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 3.13 20181005
+ * @version 3.14 20181016
  * @package eftec
  * @author Jorge Castro Castillo
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -26,6 +26,11 @@ class DaoOne
     var $pwd;
     var $db;
     var $charset='';
+    /** @var bool It is true if the database is connected otherwise,it's false */
+    var $isOpen=false;
+    /** @var bool If true (default), then it throws an error if happens an error. If false, then the execution continues */
+    var $throwOnError=true;
+
     /** @var  \mysqli */
     var $conn1;
     //</editor-fold>
@@ -47,6 +52,7 @@ class DaoOne
     var $logFile = "";
     /** @var int 0=no log (but error), 1=normal,2=verbose */
     public $logLevel=0;
+
     /** @var string last query executed */
     var $lastQuery;
     var $lastParam=[];
@@ -75,13 +81,14 @@ class DaoOne
     //</editor-fold>
 
     /**
-     * ClassUtilDB constructor.
+     * ClassUtilDB constructor.  It doesn't connect to the database.
      * @param string $server server ip. Ex. 127.0.0.1
      * @param string $user Ex. root
      * @param string $pwd Ex. 12345
      * @param string $db Ex. mybase
      * @param string $logFile Optional  log file. Example c:\\temp\log.log
      * @param string $charset Example utf8mb4
+     * @see DaoOne::connect()
      */
     public function __construct($server, $user, $pwd, $db, $logFile = "",$charset='')
     {
@@ -98,16 +105,21 @@ class DaoOne
      * @param $dbName
      */
     public function db($dbName) {
+        if (!$this->isOpen) return;
         $this->db=$dbName;
         $this->conn1->select_db($dbName);
     }
 
     public function setCharset($charset) {
+        if (!$this->isOpen) return;
         $this->charset=$charset;
         $this->conn1->set_charset($this->charset);
     }
 
-
+    /**
+     * returns if the database is in read-only mode or not.
+     * @return bool
+     */
     public function readonly()
     {
         return $this->readonly;
@@ -115,28 +127,63 @@ class DaoOne
 
     /**
      * Connects to the database.
-     * @throws \Exception
+     * @param bool $failIfConnected  true=it throw an error if it's connected, otherwise it does nothing
+     * @throws Exception
      */
-    public function connect()
+    public function connect($failIfConnected=true)
     {
         mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
-        if ($this->conn1 != null) {
+        if ($this->isOpen) {
+            if (!$failIfConnected) return; // it's already connected.
             $this->throwError("Already connected");
         }
         try {
+            if ($this->logLevel>=2) {
+                $this->storeInfo("connecting to {$this->server} {$this->user}/*** {$this->db}");
+            }
             $this->conn1 = new \mysqli($this->server, $this->user, $this->pwd, $this->db);
             if ($this->charset!='') {
                 $this->setCharset($this->charset);
             }
+            $this->isOpen=true;
         } catch (Exception $ex) {
+            $this->isOpen=false;
             $this->throwError("Failed to connect to MySQL:\t" . $ex->getMessage());
         }
         // Check connection
         if (mysqli_connect_errno()) {
+            $this->isOpen=false;
             $this->throwError("Failed to connect to MySQL:\t" . mysqli_connect_error());
         }
     }
 
+    /**
+     * Alias of DaoOne::connect()
+     * @param bool $failIfConnected
+     * @see DaoOne::connect()
+     * @throws Exception
+     */
+    public function open($failIfConnected=true) {
+        $this->connect($failIfConnected);
+    }
+
+    public function close() {
+        $this->isOpen=false;
+        if ($this->conn1===null) return; // its already close
+        @$this->conn1->close();
+        @$this->conn1=null;
+    }
+
+    /**
+     * Injects a Message Container.
+     * @return MessageList|null
+     */
+    public function getMessages() {
+        if (function_exists('messages')) {
+            return messages();
+        }
+        return null;
+    }
 
     /**
      * Run many  unprepared query separated by ;
@@ -147,6 +194,7 @@ class DaoOne
      */
     public function runMultipleRawQuery($listSql, $continueOnError = false)
     {
+        if (!$this->isOpen) { $this->throwError("It's not connected to the database"); return false; }
         $arr = explode(';', $listSql);
         $ok = true;
         foreach ($arr as $rawSql) {
@@ -158,6 +206,9 @@ class DaoOne
                         $this->throwError("Database is in READ ONLY MODE");
                     }
                 }
+            }
+            if ($this->logLevel>=2) {
+                $this->storeInfo($rawSql);
             }
             $r = $this->conn1->query($rawSql);
             if ($r === false) {
@@ -179,7 +230,7 @@ class DaoOne
      */
     public function startTransaction($flag = MYSQLI_TRANS_START_READ_WRITE)
     {
-        if ($this->transactionOpen) return false;
+        if ($this->transactionOpen || !$this->isOpen) return false;
         $this->transactionOpen = true;
         $this->conn1->begin_transaction($flag);
         return true;
@@ -193,7 +244,8 @@ class DaoOne
      */
     public function commit($throw=true)
     {
-        if (!$this->transactionOpen && $throw) $this->throwError("Transaction not open to commit()");
+        if (!$this->transactionOpen && $throw) { $this->throwError("Transaction not open to commit()"); return false; }
+        if (!$this->isOpen) { $this->throwError("It's not connected to the database"); return false; }
         $this->transactionOpen = false;
         return @$this->conn1->commit();
     }
@@ -207,6 +259,7 @@ class DaoOne
     public function rollback($throw=true)
     {
         if (!$this->transactionOpen && $throw) $this->throwError("Transaction not open  to rollback()");
+        if (!$this->isOpen) { $this->throwError("It's not connected to the database"); return false; }
         $this->transactionOpen = false;
         return @$this->conn1->rollback();
     }
@@ -279,7 +332,6 @@ class DaoOne
      */
     public function select($sql)
     {
-
         $this->select = $sql;
         return $this;
     }
@@ -482,23 +534,22 @@ class DaoOne
 
         /** @var \mysqli_stmt $stmt */
         $stmt = $this->prepare($sql);
+        if ($stmt===null) {
+            return false;
+        }
         $parType = implode('', $this->whereParamType);
         $values = array_values($this->whereParamValue);
         if ($parType) {
             $reval = $stmt->bind_param($parType, ...$values);
             if (!$reval) {
                 $this->throwError("Error in bind");
+                return false;
             }
         }
-
         $this->runQuery($stmt);
         $rows = $stmt->get_result();
         $stmt->close();
-
         $this->builderReset();
-
-
-
         if ($returnArray) {
             $r = $rows->fetch_all(MYSQLI_ASSOC);
             $rows->free_result();
@@ -535,6 +586,7 @@ class DaoOne
      */
     public function prepare($query)
     {
+        if (!$this->isOpen) { $this->throwError("It's not connected to the database"); return null; }
         $this->lastParam=[];
         $this->lastQuery = $query;
         if ($this->readonly) {
@@ -543,6 +595,10 @@ class DaoOne
                 $this->throwError("Database is in READ ONLY MODE");
             }
         }
+        if ($this->logLevel>=2) {
+            $this->storeInfo($query);
+        }
+
         try {
             $stmt = $this->conn1->prepare($query);
         } catch (Exception $ex) {
@@ -563,6 +619,7 @@ class DaoOne
      */
     public function runQuery($stmt)
     {
+        if (!$this->isOpen) { $this->throwError("It's not connected to the database"); return null; }
         try {
             $r = $stmt->execute();
         } catch (Exception $ex) {
@@ -662,11 +719,12 @@ class DaoOne
      * @param string $rawSql
      * @param array|null $param
      * @param bool $returnArray
-     * @return bool|\mysqli_result|array
+     * @return bool|\mysqli_result|array an array of associative or a mysqli_result
      * @throws Exception
      */
     public function runRawQuery($rawSql, $param = null, $returnArray = true)
     {
+        if (!$this->isOpen) { $this->throwError("It's not connected to the database"); return false;}
         if ($this->readonly) {
             if (stripos($rawSql, 'insert ') === 0 || stripos($rawSql, 'update ') === 0 || stripos($rawSql, 'delete ') === 0) {
                 // we aren't checking SQL-DCL queries. Also, "insert into" is stopped but "  insert into" not.
@@ -676,7 +734,7 @@ class DaoOne
         $this->lastParam=$param;
         $this->lastQuery=$rawSql;
         if ($this->logLevel>=2) {
-            $this->debugFile($rawSql,"DEBUG");
+            $this->storeInfo($rawSql);
         }
         if ($param === null) {
             // the "where" chain doesn't have parameters.
@@ -721,6 +779,7 @@ class DaoOne
      */
     public function insert_id()
     {
+        if (!$this->isOpen) return -1;
         return $this->conn1->insert_id;
     }
     /**
@@ -729,6 +788,7 @@ class DaoOne
      */
     public function affected_rows()
     {
+        if (!$this->isOpen) return -1;
         return $this->conn1->affected_rows;
     }
 
@@ -751,9 +811,14 @@ class DaoOne
     {
         if ($table===null) {
             // using builder. from()->set()->where()->update()
-            if ($this->from=="") $this->throwError("you can't execute an empty update() without a from()");
-            if (count($this->set)===0) $this->throwError("you can't execute an empty update() without a set()");
-            if (count($this->where)===0) $this->throwError("you can't execute an empty update() without a where()");
+            $errorCause='';
+            if ($this->from=="") $errorCause="you can't execute an empty update() without a from()";
+            if (count($this->set)===0) $errorCause="you can't execute an empty update() without a set()";
+            if (count($this->where)===0) $errorCause="you can't execute an empty update() without a where()";
+            if ($errorCause) {
+                $this->throwError($errorCause);
+                return false;
+            }
             $sql="update `".$this->from."` ".$this->constructSet().' '.$this->constructWhere();
             $param=[];
             for($i=0;$i<count($this->whereParamType);$i++) {
@@ -802,8 +867,13 @@ class DaoOne
     {
         if ($table===null) {
             // using builder. from()->set()->insert()
-            if ($this->from=="") $this->throwError("you can't execute an empty insert() without a from()");
-            if (count($this->set)===0) $this->throwError("you can't execute an empty insert() without a set()");
+            $errorCause='';
+            if ($this->from=="") $errorCause="you can't execute an empty insert() without a from()";
+            if (count($this->set)===0) $errorCause="you can't execute an empty insert() without a set()";
+            if ($errorCause) {
+                $this->throwError($errorCause);
+                return false;
+            }
             $sql= /** @lang text */"insert into `".$this->from.'` '.$this->constructInsert();
             $param=[];
             for($i=0;$i<count($this->whereParamType);$i++) {
@@ -844,8 +914,13 @@ class DaoOne
     {
         if ($table===null) {
             // using builder. from()->where()->delete()
-            if ($this->from=="") $this->throwError("you can't execute an empty delete() without a from()");
-            if (count($this->where)===0) $this->throwError("you can't execute an empty delete() without a where()");
+            $errorCause='';
+            if ($this->from=="") $errorCause="you can't execute an empty delete() without a from()";
+            if (count($this->where)===0) $errorCause="you can't execute an empty delete() without a where()";
+            if ($errorCause) {
+                $this->throwError($errorCause);
+                return false;
+            }
             $sql="delete from `".$this->from."` ".$this->constructWhere();
             $param=[];
             for($i=0;$i<count($this->whereParamType);$i++) {
@@ -1073,20 +1148,39 @@ class DaoOne
      */
     public function lastError()
     {
-        if ($this->conn1 == null) return "No connection";
+        if (!$this->isOpen) return "It's not connected to the database";
         return $this->conn1->error;
     }
     /**
-     * Write a log line for debug then throw an error.
+     * Write a log line for debug, clean the command chain then throw an error (if throwOnError==true)
      * @param $txt
      * @throws Exception
      */
     function throwError($txt)
     {
         $this->builderReset(); // it resets the chain if any.
-        $this->debugFile($txt,'ERROR');
+        if ($this->getMessages()===null) {
+            $this->debugFile($txt,'ERROR');
+        } else {
+            $this->getMessages()->addItem($this->db,$txt);
+            $this->debugFile($txt,'ERROR');
+        }
 
-        throw new Exception($txt);
+        if ($this->throwOnError) throw new Exception($txt);
+    }
+    /**
+     * Write a log line for debug, clean the command chain then throw an error (if throwOnError==true)
+     * @param $txt
+     * @throws Exception
+     */
+    function storeInfo($txt)
+    {
+        if ($this->getMessages()===null) {
+            $this->debugFile($txt,'INFO');
+        } else {
+            $this->getMessages()->addItem($this->db,$txt,"info");
+            $this->debugFile($txt,'INFO');
+        }
     }
     function debugFile($txt,$level='INFO') {
         if ($this->logFile == '') {

@@ -1,7 +1,7 @@
 {
     "name": "eftec/daoone",
     "description": "Data Access Object wrapper in a single Class",
-    "version": "3.13",
+    "version": "3.14",
     "type": "library",
     "keywords": [
         "dao",
@@ -25,6 +25,9 @@
     "require": {
         "ext-mysqli": "*",
         "ext-json": "*"
+    },
+    "suggest": {
+        "eftec/validationone": "For keeping and storing the messages"
     }
 }
 

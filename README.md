@@ -195,6 +195,15 @@ It commits a transaction.
 It rollbacks a transaction. 
 * If $throw is true then it throws an exception if the transaction fails to rollback.  If false, then it ignores if the rollback fail or if the transaction is not open.
 
+### Fields
+
+### throwOnError=true
+If true (default), then it throws an error if happens an error. If false, then the execution continues  
+
+### isOpen=true
+It is true if the database is connected otherwise,it's false.
+
+
 ## Query Builder (DQL)
 You could also build a procedural query.
 
@@ -496,6 +505,13 @@ $dao->from("producttype")
 
 ## Changelist
 
+* 3.14 2018-10-16 
+* * Added field throwOnError. 
+* * Added more control on the error. 
+* * Now methods fails if the database is not open.
+* * Added a container to messages (optional). It works with the function messages()
+* * Added field isOpen
+* * Added method storeInfo()
 * 3.13 2018-10-05 Changed command eval to bind_param( ...)
 * 3.12 2018-09-29 Fixed a bug with insert() it now returns the last identity.
 * 3.11 2018-09-27 Cleaned the code. If it throws an exception, then the chain is reset.
