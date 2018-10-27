@@ -9,7 +9,7 @@ use Exception;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 3.14 20181016
+ * @version 3.15 20181025
  * @package eftec
  * @author Jorge Castro Castillo
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -57,6 +57,9 @@ class DaoOne
     var $lastQuery;
     var $lastParam=[];
     var $dateFormat = 'aa';
+
+    private $genSqlFields=true;
+    var $lastSqlFields='';
 
     //<editor-fold desc="query builder fields">
     private $select = '';
@@ -327,12 +330,16 @@ class DaoOne
 
     //<editor-fold desc="Query Builder functions" defaultstate="collapsed" >
     /**
-     * @param $sql
+     * @param string|array $sql
      * @return DaoOne
      */
     public function select($sql)
     {
-        $this->select = $sql;
+        if (is_array($sql)) {
+            $this->select.= implode(', ',$sql);
+        } else {
+            $this->select.= $sql;
+        }
         return $this;
     }
 
@@ -392,20 +399,44 @@ class DaoOne
     }
 
     /**
+     * Example:<br>
+     * where(['field'=>20]) // associative array with automatic type<br>
+     * where(['field'=>['i',20]]) // associative array with type defined<br>
+     * where(['field',20]) // array automatic type<br>
+     * where(['field',['i',20]]) // array type defined<br>
+     * where('field=20') // literal value<br>
+     * where('field=?',[20]) // automatic type<br>
+     * where('field=?',['i',20]) // type(i,d,s,b) defined<br>
+     * where('field=?,field2=?',['i',20,'s','hello'])<br>
      * @param string|array $sql
-     * @param array $param
+     * @param array|mixed $param
      * @return DaoOne
+     * @see http://php.net/manual/en/mysqli-stmt.bind-param.php for types
      */
     public function where($sql, $param = null)
     {
         if (is_string($sql)) {
             $this->where[] = $sql;
             if ($param === null) return $this;
-            for ($i = 0; $i < count($param); $i += 2) {
-                $this->whereParamType[] = $param[$i];
-                $this->whereParamValue['i_' . $this->whereCounter] = $param[$i + 1];
-                $this->whereCounter++;
+            switch (true) {
+                case !is_array($param):
+                    $this->whereParamType[] = $this->getType($param);
+                    $this->whereParamValue['i_' . $this->whereCounter] = $param;
+                    $this->whereCounter++;
+                    break;
+                case count($param)==1:
+                    $this->whereParamType[] = $this->getType($param[0]);
+                    $this->whereParamValue['i_' . $this->whereCounter] = $param[0];
+                    $this->whereCounter++;
+                    break;
+                default:
+                    for ($i = 0; $i < count($param); $i += 2) {
+                        $this->whereParamType[] = $param[$i];
+                        $this->whereParamValue['i_' . $this->whereCounter] = $param[$i + 1];
+                        $this->whereCounter++;
+                    }
             }
+
         } else {
             $col=array();
             $colT=array();
@@ -519,6 +550,7 @@ class DaoOne
      */
     public function toList()
     {
+
         return $this->runGen(true);
     }
 
@@ -534,6 +566,9 @@ class DaoOne
 
         /** @var \mysqli_stmt $stmt */
         $stmt = $this->prepare($sql);
+
+
+
         if ($stmt===null) {
             return false;
         }
@@ -548,6 +583,9 @@ class DaoOne
         }
         $this->runQuery($stmt);
         $rows = $stmt->get_result();
+        if ($this->genSqlFields) {
+            $this->lastSqlFields=$this->obtainSqlFields($rows);
+        }
         $stmt->close();
         $this->builderReset();
         if ($returnArray) {
@@ -557,6 +595,34 @@ class DaoOne
         } else {
             return $rows;
         }
+    }
+
+    /**
+     * @param bool $genSqlFields
+     * @return $this
+     */
+    public function generateSqlFields($genSqlFields=true) {
+        $this->genSqlFields=$genSqlFields;
+        return $this;
+    }
+
+    /**
+     * @param mysqli_result $row
+     * @return string
+     */
+    private function obtainSqlFields($rows) {
+        if (!$rows) return '';
+        $fields=$rows->fetch_fields();
+        $r='';
+        foreach($fields as $f) {
+            if ($f->orgname!=$f->name) {
+                $r.="`{$f->table}`.`$f->orgname` `$f->name`, ";
+            } else {
+                $r.="`{$f->table}`.`$f->orgname`, ";
+            }
+
+        }
+        return trim($r," \t\n\r\0\x0B,");
     }
 
     /**
@@ -765,6 +831,9 @@ class DaoOne
 
         $this->runQuery($stmt);
         $rows = $stmt->get_result();
+        if ($this->genSqlFields) {
+            $this->lastSqlFields=$this->obtainSqlFields($rows);
+        }
         $stmt->close();
         if ($returnArray && $rows instanceof \mysqli_result) {
             return $rows->fetch_all(MYSQLI_ASSOC);
@@ -1011,8 +1080,7 @@ class DaoOne
                         $col[] = $k;
                         $colT[] = '?';
                     }
-                    $vt='s';
-                    $this->getType($vt,$v);
+                    $vt=$this->getType($v);
 
                     $param[] = $vt;
                     $param[] = $v;
@@ -1062,7 +1130,12 @@ class DaoOne
         }
     }
 
-    private function getType(&$vt,&$v) {
+    /**
+     * @param $vt (out) type of variable
+     * @param $v Variable
+     * @return string
+     */
+    private function getType(&$v) {
         switch (1) {
             case (is_double($v)):
                 $vt='d';
@@ -1081,6 +1154,7 @@ class DaoOne
             default:
                 $vt='s';
         }
+        return $vt;
     }
 
     private function isAssoc($array){
