@@ -1,6 +1,7 @@
 <?php
-
+namespace eftec\tests;
 use eftec\DaoOne;
+
 
 class DaoOneTest extends \PHPUnit_Framework_TestCase
 {
