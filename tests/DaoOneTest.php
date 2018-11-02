@@ -10,7 +10,7 @@ class DaoOneTest extends \PHPUnit_Framework_TestCase
     {
         parent::__construct($name, $data, $dataName);
         //you could change it.
-        $this->daoOne=new DaoOne("127.0.0.1","root","abc.123","travisdb");
+        $this->daoOne=new DaoOne("127.0.0.1","root","","travisdb");
     }
 
     public function test___construct()

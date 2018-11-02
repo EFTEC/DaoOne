@@ -4,5 +4,7 @@ php:
   - '7.1'
   - '7.2'
   - nightly
+services:
+  - mysql
 before_script:
 - mysql -e "create database IF NOT EXISTS travisdb;" -uroot; fi
