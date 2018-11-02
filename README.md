@@ -36,7 +36,7 @@ var_export($ages);
 $stmt->close();
 ```
 
-
+[![Build Status](https://travis-ci.org/EFTEC/DaoOne.svg?branch=master)](https://travis-ci.org/EFTEC/DaoOne)
 [![Packagist](https://img.shields.io/packagist/v/eftec/daoone.svg)](https://packagist.org/packages/eftec/daoone)
 [![Maintenance](https://img.shields.io/maintenance/yes/2018.svg)]()
 [![composer](https://img.shields.io/badge/composer-%3E1.6-blue.svg)]()
@@ -86,7 +86,7 @@ Add to composer.json the next requirement, then update composer.
 ```json
   {
       "require": {
-        "eftec/daoone": "^3.9"
+        "eftec/daoone": "^3.15"
       }
   }
 ```
@@ -504,7 +504,7 @@ $dao->from("producttype")
 > Generates the query: **delete from producttype where `idproducttype`=?** ....
 
 ## Changelist
-* 3.1.5 2018-10-27
+* 3.15 2018-10-27
 * * Now it allows multiple select()
 * * function generateSqlFields()
 * 3.14 2018-10-16 

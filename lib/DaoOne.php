@@ -113,6 +113,10 @@ class DaoOne
         $this->conn1->select_db($dbName);
     }
 
+    /**
+     * It sets the charset of the database.
+     * @param $charset
+     */
     public function setCharset($charset) {
         if (!$this->isOpen) return;
         $this->charset=$charset;
@@ -132,6 +136,7 @@ class DaoOne
      * Connects to the database.
      * @param bool $failIfConnected  true=it throw an error if it's connected, otherwise it does nothing
      * @throws Exception
+     * @test exception this(false)
      */
     public function connect($failIfConnected=true)
     {
