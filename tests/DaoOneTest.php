@@ -65,6 +65,8 @@ class DaoOneTest extends TestCase
 
     public function test_startTransaction()
     {
+        $this->assertEquals(true,$this->daoOne->startTransaction());
+        $this->daoOne->commit();
 
     }
 

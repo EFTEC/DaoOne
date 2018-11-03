@@ -504,6 +504,7 @@ $dao->from("producttype")
 > Generates the query: **delete from producttype where `idproducttype`=?** ....
 
 ## Changelist
+* 3.16 2018-11-03 Added test unit and travis CI.
 * 3.15 2018-10-27
 * * Now it allows multiple select()
 * * function generateSqlFields()

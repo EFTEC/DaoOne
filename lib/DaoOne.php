@@ -10,7 +10,7 @@ use mysqli_result;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 3.15 20181025
+ * @version 3.16 20181103
  * @package eftec
  * @author Jorge Castro Castillo
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -245,6 +245,9 @@ class DaoOne
     /**
      * @param int $flag MYSQLI_TRANS_START_READ_ONLY,MYSQLI_TRANS_START_READ_WRITE,MYSQLI_TRANS_START_WITH_CONSISTENT_SNAPSHOT
      * @return bool
+     * @test equals true,this()
+     * @posttest execution $this->daoOne->commit();
+     * @example examples/testdb.php 92,4
      */
     public function startTransaction($flag = MYSQLI_TRANS_START_READ_WRITE)
     {
