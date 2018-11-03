@@ -4,6 +4,7 @@ namespace eftec;
 
 use DateTime;
 use Exception;
+use mysqli_result;
 
 
 /**
@@ -106,6 +107,7 @@ class DaoOne
     /**
      * It changes default database.
      * @param $dbName
+     * @test void this('travisdb')
      */
     public function db($dbName) {
         if (!$this->isOpen) return;
@@ -115,7 +117,8 @@ class DaoOne
 
     /**
      * It sets the charset of the database.
-     * @param $charset
+     * @param string $charset Example 'utf8'
+     * @test void this('utf8')
      */
     public function setCharset($charset) {
         if (!$this->isOpen) return;
@@ -126,6 +129,7 @@ class DaoOne
     /**
      * returns if the database is in read-only mode or not.
      * @return bool
+     * @test equals false,this(),'the database is read only'
      */
     public function readonly()
     {
@@ -170,11 +174,16 @@ class DaoOne
      * @param bool $failIfConnected
      * @see DaoOne::connect()
      * @throws Exception
+     * @test exception this(false)
      */
     public function open($failIfConnected=true) {
         $this->connect($failIfConnected);
     }
 
+    /**
+     * It closes the connection
+     * @test void this()
+     */
     public function close() {
         $this->isOpen=false;
         if ($this->conn1===null) return; // its already close
@@ -185,6 +194,7 @@ class DaoOne
     /**
      * Injects a Message Container.
      * @return MessageList|null
+     * @test equals null,this(),'this is not a message container'
      */
     public function getMessages() {
         if (function_exists('messages')) {
@@ -249,6 +259,7 @@ class DaoOne
      * @param bool $throw
      * @return bool
      * @throws Exception
+     * @test equals false,(false),'transaction is not open'
      */
     public function commit($throw=true)
     {
@@ -263,6 +274,7 @@ class DaoOne
      * @param bool $throw
      * @return bool
      * @throws Exception
+     * @test equals false,(false),'transaction is not open'
      */
     public function rollback($throw=true)
     {
@@ -337,6 +349,7 @@ class DaoOne
     /**
      * @param string|array $sql
      * @return DaoOne
+     * @test InstanceOf DaoOne::class,this('select 1 from DUAL')
      */
     public function select($sql)
     {
@@ -352,6 +365,7 @@ class DaoOne
      * It generates an inner join
      * @param string $sql Example "tablejoin on table1.field=tablejoin.field"
      * @return DaoOne
+     * @test InstanceOf DaoOne::class,this('tablejoin on t1.field=t2.field')
      */
     public function join($sql)
     {
@@ -374,6 +388,7 @@ class DaoOne
     /**
      * @param $sql
      * @return DaoOne
+     * @test InstanceOf DaoOne::class,this('table t1')
      */
     public function from($sql)
     {
@@ -384,6 +399,7 @@ class DaoOne
     /**
      * @param $sql
      * @return DaoOne
+     * @test InstanceOf DaoOne::class,this('table2 on table1.t1=table2.t2')
      */
     public function left($sql)
     {
@@ -395,6 +411,7 @@ class DaoOne
     /**
      * @param $sql
      * @return DaoOne
+     * @test InstanceOf DaoOne::class,this('table2 on table1.t1=table2.t2')
      */
     public function right($sql)
     {
@@ -417,6 +434,7 @@ class DaoOne
      * @param array|mixed $param
      * @return DaoOne
      * @see http://php.net/manual/en/mysqli-stmt.bind-param.php for types
+     * @test InstanceOf DaoOne::class,this('field1=?,field2=?',['i',20,'s','hello'])
      */
     public function where($sql, $param = null)
     {
@@ -463,6 +481,7 @@ class DaoOne
      * @param array $param
      * @return DaoOne
      * @throws Exception
+     * @test InstanceOf DaoOne::class,this('field1=?,field2=?',['i',20,'s','hello'])
      */
     public function set($sql, $param = null)
     {
@@ -494,6 +513,7 @@ class DaoOne
     /**
      * @param $sql
      * @return DaoOne
+     * @test InstanceOf DaoOne::class,this('fieldgroup')
      */
     public function group($sql)
     {
@@ -505,6 +525,7 @@ class DaoOne
      * @param $sql
      * @param array $param
      * @return DaoOne
+     * @test InstanceOf DaoOne::class,this('field1=?,field2=?',['i',20,'s','hello'])
      */
     public function having($sql, $param)
     {
@@ -521,6 +542,7 @@ class DaoOne
     /**
      * @param $sql
      * @return DaoOne
+     * @test InstanceOf DaoOne::class,this('name desc')
      */
     public function order($sql)
     {
@@ -531,6 +553,7 @@ class DaoOne
     /**
      * @param $sql
      * @return DaoOne
+     * @test InstanceOf DaoOne::class,this('1,10')
      */
     public function limit($sql)
     {
@@ -541,6 +564,7 @@ class DaoOne
     /**
      * @param $sql
      * @return DaoOne
+     * @test InstanceOf DaoOne::class,this()
      */
     public function distinct($sql = 'distinct')
     {
@@ -605,6 +629,7 @@ class DaoOne
     /**
      * @param bool $genSqlFields
      * @return $this
+     * @test InstanceOf DaoOne::class,this(true)
      */
     public function generateSqlFields($genSqlFields=true) {
         $this->genSqlFields=$genSqlFields;
@@ -1139,9 +1164,10 @@ class DaoOne
     }
 
     /**
-     * @param $vt (out) type of variable
-     * @param $v Variable
+     * @param string $v Variable
      * @return string
+     * @test equals 'd',(20.3)
+     * @test equals 'ds',('hello')
      */
     private function getType(&$v) {
         switch (1) {
@@ -1176,6 +1202,7 @@ class DaoOne
      * @param string $salt
      * @param string $encMethod . Example : AES-128-CTR See http://php.net/manual/en/function.openssl-get-cipher-methods.php
      * @throws Exception
+     * @test void this('123','somesalt','AES-128-CTR')
      */
     public function setEncryption($password, $salt, $encMethod)
     {
