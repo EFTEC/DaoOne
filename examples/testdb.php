@@ -39,6 +39,7 @@ try {
     $productName="Cocacola";
     $stmt->bind_param("s",$productName); // s stand for string. Also i =integer, d = double and b=blob
     $dao->runQuery($stmt);
+    $dao->runQuery($dao->prepare('select 1 from dual'));
     echo "Last id inserted :".$dao->insert_id()."<br>";
 } catch (Exception $e) {
     echo "<h2>Insert Cocacola (prepared) error:</h2>";

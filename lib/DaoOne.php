@@ -687,6 +687,8 @@ class DaoOne
      * @param $stmt \mysqli_stmt
      * @return bool returns true if the operation is correct, otherwise false
      * @throws Exception
+     * @test equals true,$this->daoOne->runQuery($this->daoOne->prepare('select 1 from dual'))
+     * @test equals [1=>1],$this->daoOne->select('1')->from('dual')->first(),'it must runs'
      */
     public function runQuery($stmt)
     {
@@ -792,6 +794,7 @@ class DaoOne
      * @param bool $returnArray
      * @return bool|\mysqli_result|array an array of associative or a mysqli_result
      * @throws Exception
+     * @test equals [0=>[1=>1]],this('select 1',null,true)
      */
     public function runRawQuery($rawSql, $param = null, $returnArray = true)
     {
