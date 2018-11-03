@@ -18,7 +18,7 @@ if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
         };
     }
 
-    spl_autoload_register(create_autoloader("eftec\\daoone\\", __DIR__ . '/../lib/'));
+    spl_autoload_register(create_autoloader("eftec\\", __DIR__ . '/../lib/'));
     spl_autoload_register(create_autoloader("eftec\\tests\\", __DIR__ . '/'));
 }
 
