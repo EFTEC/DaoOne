@@ -1,9 +1,10 @@
 <?php
 namespace eftec\tests;
 use eftec\DaoOne;
+use PHPUnit\Framework\TestCase;
 
 
-class DaoOneTest extends \PHPUnit_Framework_TestCase
+class DaoOneTest extends TestCase
 {
     var $daoOne;
 
