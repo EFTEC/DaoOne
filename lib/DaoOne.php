@@ -10,7 +10,7 @@ use mysqli_result;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 3.16 20181103
+ * @version 3.17 20181201
  * @package eftec
  * @author Jorge Castro Castillo
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -494,10 +494,17 @@ class DaoOne
         if (is_string($sql)) {
             $this->set[] = $sql;
             if ($param === null) return $this;
-            for ($i = 0; $i < count($param); $i += 2) {
-                $this->whereParamType[] = $param[$i];
-                $this->whereParamValue['i_' . $this->whereCounter] = $param[$i + 1];
+            if (is_array($param)) {
+                for ($i = 0; $i < count($param); $i += 2) {
+                    $this->whereParamType[] = $param[$i];
+                    $this->whereParamValue['i_' . $this->whereCounter] = $param[$i + 1];
+                    $this->whereCounter++;
+                }
+            } else {
+                $this->whereParamType[] = 's';
+                $this->whereParamValue['i_' . $this->whereCounter] = $param;
                 $this->whereCounter++;
+                
             }
         } else {
             $col=array();

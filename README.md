@@ -436,6 +436,18 @@ Using nested chain multiple set
         ->set('type=?',['i',1])
         ->insert();
 ```
+or (the type is defined, in the possible, automatically by MySql)     
+```php
+    $dao->from("producttype")
+        ->set("idproducttype=?",['i',101])
+        ->set('name=?','Pepsi')
+        ->set('type=?',1)
+        ->insert();
+```
+
+
+
+
     
 Using nested chain declarative set
 ```php
@@ -473,6 +485,16 @@ $dao->from("producttype")
     ->update(); // update
 ```
 
+or
+
+```php
+$dao->from("producttype")
+    ->set("name=?",'Captain-Crunch') //set
+    ->set("type=?",6) //set
+    ->where('idproducttype=?',['i',6]) // where
+    ->update(); // update
+```
+
 
 > Generates the query: **update producttype set `name`=?,`type`=? where `idproducttype`=?** ....
 
@@ -504,6 +526,7 @@ $dao->from("producttype")
 > Generates the query: **delete from producttype where `idproducttype`=?** ....
 
 ## Changelist
+* 3.17 2018-12-01 set() now allows a single value for the second argument.   
 * 3.16 2018-11-03 Added test unit and travis CI.
 * 3.15 2018-10-27
 * * Now it allows multiple select()
