@@ -1,7 +1,7 @@
 {
     "name": "eftec/daoone",
     "description": "Data Access Object wrapper in a single Class",
-    "version": "3.17",
+    "version": "3.19",
     "type": "library",
     "keywords": [
         "dao",
@@ -15,7 +15,6 @@
             "homepage": "https://github.com/EFTEC/"
         }
     ],
-    "minimum-stability": "beta",
     "license": "MIT",
     "autoload": {
       "psr-4": {
