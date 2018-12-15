@@ -4,6 +4,15 @@ DaoOne. It's a simple wrapper for Mysqli
 
 This library is as fast as possible. Most of the operations are simple string/array managements.
 
+[![Build Status](https://travis-ci.org/EFTEC/DaoOne.svg?branch=master)](https://travis-ci.org/EFTEC/DaoOne)
+[![Packagist](https://img.shields.io/packagist/v/eftec/daoone.svg)](https://packagist.org/packages/eftec/daoone)
+[![Total Downloads](https://poser.pugx.org/eftec/daoone/downloads)](https://packagist.org/packages/eftec/daoone)
+[![Maintenance](https://img.shields.io/maintenance/yes/2018.svg)]()
+[![composer](https://img.shields.io/badge/composer-%3E1.6-blue.svg)]()
+[![php](https://img.shields.io/badge/php->5.6-green.svg)]()
+[![php](https://img.shields.io/badge/php-7.x-green.svg)]()
+[![CocoaPods](https://img.shields.io/badge/docs-70%25-yellow.svg)]()
+
 Turn this 
 
 ```$stmt = $mysqli->prepare("SELECT * FROM myTable WHERE name = ?");
@@ -22,28 +31,15 @@ $stmt->close();
 
 into this
 
-```$stmt = $mysqli->prepare("SELECT * FROM myTable WHERE name = ?");
-$stmt->bind_param("s", $_POST['name']);
-$stmt->execute();
-$result = $stmt->get_result();
-if($result->num_rows === 0) exit('No rows');
-while($row = $result->fetch_assoc()) {
-  $ids[] = $row['id'];
-  $names[] = $row['name'];
-  $ages[] = $row['age'];
-}
-var_export($ages);
-$stmt->close();
+```
+$products=$dao
+    ->select("*")
+    ->from("myTable")
+    ->where("name = ?",[$_POST['name']])
+    ->toList();
 ```
 
-[![Build Status](https://travis-ci.org/EFTEC/DaoOne.svg?branch=master)](https://travis-ci.org/EFTEC/DaoOne)
-[![Packagist](https://img.shields.io/packagist/v/eftec/daoone.svg)](https://packagist.org/packages/eftec/daoone)
-[![Total Downloads](https://poser.pugx.org/eftec/daoone/downloads)](https://packagist.org/packages/eftec/daoone)
-[![Maintenance](https://img.shields.io/maintenance/yes/2018.svg)]()
-[![composer](https://img.shields.io/badge/composer-%3E1.6-blue.svg)]()
-[![php](https://img.shields.io/badge/php->5.6-green.svg)]()
-[![php](https://img.shields.io/badge/php-7.x-green.svg)]()
-[![CocoaPods](https://img.shields.io/badge/docs-70%25-yellow.svg)]()
+
 
 ## Table of Content
 
@@ -81,6 +77,8 @@ $stmt->close();
 
 
 ## Install (using composer)
+
+>
 
 Add to composer.json the next requirement, then update composer.
 
