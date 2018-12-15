@@ -38,6 +38,7 @@ $stmt->close();
 
 [![Build Status](https://travis-ci.org/EFTEC/DaoOne.svg?branch=master)](https://travis-ci.org/EFTEC/DaoOne)
 [![Packagist](https://img.shields.io/packagist/v/eftec/daoone.svg)](https://packagist.org/packages/eftec/daoone)
+[![Total Downloads](https://poser.pugx.org/eftec/daoone/downloads)](https://packagist.org/packages/eftec/daoone)
 [![Maintenance](https://img.shields.io/maintenance/yes/2018.svg)]()
 [![composer](https://img.shields.io/badge/composer-%3E1.6-blue.svg)]()
 [![php](https://img.shields.io/badge/php->5.6-green.svg)]()
