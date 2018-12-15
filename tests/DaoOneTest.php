@@ -52,6 +52,7 @@ class DaoOneTest extends TestCase
 		    $r=$this->daoOne->runRawQuery('drop table product_category');
 		    
 	    } catch (Exception $e) {
+		    $r=false;
 	    	// drops silently
 	    }
 	    $this->assertEquals(true,$r,"Drop failed");
