@@ -19,7 +19,11 @@ try {
     die(1);
 }
 // creating tables
-
+echo "<hr>Dropping and Creating table<br>";
+try {
+	$dao->runRawQuery('drop table myproducts');
+} catch (Exception $e) {
+}
 $sqlT1="CREATE TABLE `myproducts` (
     `idproduct` INT NOT NULL,
     `name` VARCHAR(45) NULL,
@@ -32,7 +36,11 @@ try {
 } catch (Exception $e) {
     echo $e->getMessage()."<br>";
 }
-
+echo "<hr>Dropping And Creating table<br>";
+try {
+	$dao->runRawQuery('drop table product_category');
+} catch (Exception $e) {
+}
 $sqlT2="CREATE TABLE `product_category` (
     `id_category` INT NOT NULL,
     `catname` VARCHAR(45) NULL,
@@ -43,17 +51,21 @@ try {
 } catch (Exception $e) {
     echo $e->getMessage()."<br>";
 }
-
+echo "<hr>adding<br>";
 // adding some data
 try {
     $dao->set(['id_category' => 1, 'catname' => 'cheap'])
         ->from('product_category')->insert();
+    echo "added<br>";
     $dao->set(['id_category'=>2,'catname'=>'normal'])
         ->from('product_category')->insert();
+	echo "added<br>";
     $dao->set(['id_category'=>3,'catname'=>'expensive'])
         ->from('product_category')->insert();
+	echo "added<br>";
 } catch (Exception $e) {
 }
+echo "<hr>adding<br>";
 // adding categories
 try {
     $dao->set(['idproduct'=>1,'name'=>'cocacola'
@@ -277,6 +289,7 @@ try {
         ->toList();
     echo $dao->lastQuery;
     echo Collection::generateTable($results);
+
 
 
 } catch(Exception $ex) {

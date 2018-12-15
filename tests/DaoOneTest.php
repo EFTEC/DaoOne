@@ -1,6 +1,7 @@
 <?php
 namespace eftec\tests;
 use eftec\DaoOne;
+use Exception;
 use PHPUnit\Framework\TestCase;
 
 
@@ -44,8 +45,33 @@ class DaoOneTest extends TestCase
 
     public function test_open()
     {
-        $this->expectException(\Exception::class);
-        $this->daoOne->open();
+        //$this->expectException(\Exception::class);
+	    
+        //$this->daoOne->open(true);
+	    try {
+		    $r=$this->daoOne->runRawQuery('drop table product_category');
+		    
+	    } catch (Exception $e) {
+	    	// drops silently
+	    }
+	    $this->assertEquals(true,$r,"Drop failed");
+	    
+	    $sqlT2="CREATE TABLE `product_category` (
+	    `id_category` INT NOT NULL,
+	    `catname` VARCHAR(45) NULL,
+	    PRIMARY KEY (`id_category`));";
+	
+	    try {
+		    $r=$this->daoOne->runRawQuery($sqlT2);
+	    } catch (Exception $e) {
+		    echo $e->getMessage()."<br>";
+	    }
+	    $this->assertEquals(true,$r,"failed to create table");
+	    // we add some values
+	    $r=$this->daoOne->set(['id_category' => 1, 'catname' => 'cheap'])
+		    ->from('product_category')->insert();
+	    $this->assertEquals(0,$r,'insert must value 0');
+	    
     }
 
     public function test_close()

@@ -525,6 +525,7 @@ $dao->from("producttype")
 > Generates the query: **delete from producttype where `idproducttype`=?** ....
 
 ## Changelist
+* 3.20 2018-12-15 Fixed bug with parameters and insert(). 
 * 3.19 2018-12-09 Now null parameters are considered null.  We use instead PHP_INT_MAX to indicate when the value is not set. 
 * 3.18 2018-12-07 Changed minimum stability.
 * 3.17 2018-12-01 set() now allows a single value for the second argument.   

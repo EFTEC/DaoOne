@@ -10,7 +10,7 @@ use mysqli_result;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 3.19 20181209
+ * @version 3.20 20181215
  * @package eftec
  * @author Jorge Castro Castillo
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -512,6 +512,7 @@ class DaoOne
 
 			}
 		} else {
+			
 			$col=array();
 			$colT=array();
 			$p=array();
@@ -925,13 +926,13 @@ class DaoOne
 	 * </code>
 	 * @param string $table
 	 * @param string[] $tableDef
-	 * @param string[] $value
+	 * @param string[]|int $value
 	 * @param string[] $tableDefWhere
-	 * @param string[] $valueWhere
+	 * @param string[]|int $valueWhere
 	 * @return mixed
 	 * @throws Exception
 	 */
-	public function update($table=null, $tableDef=null, $value=null, $tableDefWhere=null, $valueWhere=null)
+	public function update($table=null, $tableDef=null, $value=PHP_INT_MAX, $tableDefWhere=null, $valueWhere=PHP_INT_MAX)
 	{
 		if ($table===null) {
 			// using builder. from()->set()->where()->update()
@@ -958,8 +959,8 @@ class DaoOne
 			$colWhere = [];
 			$param = [];
 			if ($tableDefWhere === null) {
-				$this->constructParam($tableDef, null, $col, $colT, $param);
-				$this->constructParam($value, null, $colWhere, $colT, $param);
+				$this->constructParam($tableDef, PHP_INT_MAX, $col, $colT, $param);
+				$this->constructParam($value, PHP_INT_MAX, $colWhere, $colT, $param);
 			} else {
 				$this->constructParam($tableDef, $value, $col, $colT, $param);
 				$this->constructParam($tableDefWhere, $valueWhere, $colWhere, $colT, $param);
@@ -983,11 +984,11 @@ class DaoOne
 	 * </code>
 	 * @param string $table
 	 * @param string[] $tableDef
-	 * @param string[] $value
+	 * @param string[]|int $value
 	 * @return mixed
 	 * @throws Exception
 	 */
-	public function insert($table=null, $tableDef=null, $value = null)
+	public function insert($table=null, $tableDef=null, $value = PHP_INT_MAX)
 	{
 		if ($table===null) {
 			// using builder. from()->set()->insert()
@@ -1030,11 +1031,11 @@ class DaoOne
 	 * </code>
 	 * @param string $table
 	 * @param string[] $tableDefWhere
-	 * @param string[] $valueWhere
+	 * @param string[]|int $valueWhere
 	 * @return mixed
 	 * @throws Exception
 	 */
-	public function delete($table=null, $tableDefWhere=null, $valueWhere=null)
+	public function delete($table=null, $tableDefWhere=null, $valueWhere=PHP_INT_MAX)
 	{
 		if ($table===null) {
 			// using builder. from()->where()->delete()
@@ -1119,14 +1120,14 @@ class DaoOne
 
 	/**
 	 * @param array $array1
-	 * @param array|null $array2
+	 * @param array|int $array2  if value is PHP_INT_MAX then it's calculated without this value
 	 * @param array $col
 	 * @param array $colT
 	 * @param array $param
 	 */
 	private function constructParam($array1,$array2,&$col,&$colT,&$param) {
 		if ($this->isAssoc($array1)) {
-			if ($array2 === null) {
+			if ($array2 === PHP_INT_MAX) {
 				// the type is calculated automatically. It could fails and it doesn't work with blob
 				foreach ($array1 as $k => $v) {
 					if ($colT===null) {
