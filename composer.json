@@ -1,6 +1,6 @@
 {
     "name": "eftec/daoone",
-    "description": "Data Access Object wrapper in a single Class",
+    "description": "Procedural MysqlI Data access class in a single Class",
     "version": "3.21",
     "type": "library",
     "keywords": [
