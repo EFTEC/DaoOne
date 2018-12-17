@@ -10,7 +10,7 @@ use mysqli_result;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 3.20 20181215
+ * @version 3.21 20181217
  * @package eftec
  * @author Jorge Castro Castillo
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -18,6 +18,7 @@ use mysqli_result;
  */
 class DaoOne
 {
+	const NULL=PHP_INT_MAX;
 	/** @var string|null Static date (when the date is empty) */
 	static $dateEpoch = "2000-01-01 00:00:00.00000";
 	//<editor-fold desc="server fields">
@@ -443,11 +444,11 @@ class DaoOne
 	 * @see http://php.net/manual/en/mysqli-stmt.bind-param.php for types
 	 * @test InstanceOf DaoOne::class,this('field1=?,field2=?',['i',20,'s','hello'])
 	 */
-	public function where($sql, $param = PHP_INT_MAX)
+	public function where($sql, $param = self::NULL)
 	{
 		if (is_string($sql)) {
 			$this->where[] = $sql;
-			if ($param === PHP_INT_MAX) return $this;
+			if ($param === self::NULL) return $this;
 			switch (true) {
 				case !is_array($param):
 					$this->whereParamType[] = $this->getType($param);
@@ -484,21 +485,21 @@ class DaoOne
 	}
 
 	/**
-	 * @param string|array $sql
+	 * @param string|array $sqlOrArray
 	 * @param array|mixed $param
 	 * @return DaoOne
 	 * @throws Exception
 	 * @test InstanceOf DaoOne::class,this('field1=?,field2=?',['i',20,'s','hello'])
 	 */
-	public function set($sql, $param = PHP_INT_MAX )
+	public function set($sqlOrArray, $param = self::NULL )
 	{
 		if (count($this->where)) {
 			$this->throwError("you can't execute set() after a where()");
 		}
-		if (is_string($sql)) {
-			$this->set[] = $sql;
-			// PHP_INT_MAX  is used when no value is set. We can't use null because it is a valid option.
-			if ($param === PHP_INT_MAX ) return $this;
+		if (is_string($sqlOrArray)) {
+			$this->set[] = $sqlOrArray;
+			// self::NULL  is used when no value is set. We can't use null because it is a valid option.
+			if ($param === self::NULL ) return $this;
 			if (is_array($param)) {
 				for ($i = 0; $i < count($param); $i += 2) {
 					$this->whereParamType[] = $param[$i];
@@ -516,7 +517,7 @@ class DaoOne
 			$col=array();
 			$colT=array();
 			$p=array();
-			$this->constructParam($sql,$param,$col,$colT,$p);
+			$this->constructParam($sqlOrArray,$param,$col,$colT,$p);
 			foreach($col as $k=>$c) {
 				$this->set[] = "`$c`=?";
 				$this->whereParamType[] = $p[$k*2];
@@ -544,10 +545,10 @@ class DaoOne
 	 * @test InstanceOf DaoOne::class,this('field1=?,field2=?',['i',20,'s','hello'])
 	 * * @test InstanceOf DaoOne::class,this('field1=?','hello')
 	 */
-	public function having($sql, $param = PHP_INT_MAX)
+	public function having($sql, $param = self::NULL)
 	{
 		$this->having[] = $sql;
-		if ($param === PHP_INT_MAX) return $this;
+		if ($param === self::NULL) return $this;
 		if (is_array($param)) {
 			for ($i = 0; $i < count($param); $i += 2) {
 				$this->whereParamType[] = $param[$i];
@@ -607,7 +608,7 @@ class DaoOne
 	}
 
 	/**
-	 * Run builder query.
+	 * Run builder query and returns a mysqli_result. 
 	 * @param bool $returnArray true=return an array. False return a mysqli_result
 	 * @return bool|\mysqli_result
 	 * @throws Exception
@@ -615,12 +616,8 @@ class DaoOne
 	public function runGen($returnArray = true)
 	{
 		$sql = $this->sqlGen();
-
 		/** @var \mysqli_stmt $stmt */
 		$stmt = $this->prepare($sql);
-
-
-
 		if ($stmt===null) {
 			return false;
 		}
@@ -673,7 +670,6 @@ class DaoOne
 			} else {
 				$r.="`{$f->table}`.`$f->orgname`, ";
 			}
-
 		}
 		return trim($r," \t\n\r\0\x0B,");
 	}
@@ -932,7 +928,7 @@ class DaoOne
 	 * @return mixed
 	 * @throws Exception
 	 */
-	public function update($table=null, $tableDef=null, $value=PHP_INT_MAX, $tableDefWhere=null, $valueWhere=PHP_INT_MAX)
+	public function update($table=null, $tableDef=null, $value=self::NULL, $tableDefWhere=null, $valueWhere=self::NULL)
 	{
 		if ($table===null) {
 			// using builder. from()->set()->where()->update()
@@ -959,8 +955,8 @@ class DaoOne
 			$colWhere = [];
 			$param = [];
 			if ($tableDefWhere === null) {
-				$this->constructParam($tableDef, PHP_INT_MAX, $col, $colT, $param);
-				$this->constructParam($value, PHP_INT_MAX, $colWhere, $colT, $param);
+				$this->constructParam($tableDef, self::NULL, $col, $colT, $param);
+				$this->constructParam($value, self::NULL, $colWhere, $colT, $param);
 			} else {
 				$this->constructParam($tableDef, $value, $col, $colT, $param);
 				$this->constructParam($tableDefWhere, $valueWhere, $colWhere, $colT, $param);
@@ -988,7 +984,7 @@ class DaoOne
 	 * @return mixed
 	 * @throws Exception
 	 */
-	public function insert($table=null, $tableDef=null, $value = PHP_INT_MAX)
+	public function insert($table=null, $tableDef=null, $value = self::NULL)
 	{
 		if ($table===null) {
 			// using builder. from()->set()->insert()
@@ -1035,7 +1031,7 @@ class DaoOne
 	 * @return mixed
 	 * @throws Exception
 	 */
-	public function delete($table=null, $tableDefWhere=null, $valueWhere=PHP_INT_MAX)
+	public function delete($table=null, $tableDefWhere=null, $valueWhere=self::NULL)
 	{
 		if ($table===null) {
 			// using builder. from()->where()->delete()
@@ -1120,14 +1116,14 @@ class DaoOne
 
 	/**
 	 * @param array $array1
-	 * @param array|int $array2  if value is PHP_INT_MAX then it's calculated without this value
+	 * @param array|int $array2  if value is self::NULL then it's calculated without this value
 	 * @param array $col
 	 * @param array $colT
 	 * @param array $param
 	 */
 	private function constructParam($array1,$array2,&$col,&$colT,&$param) {
 		if ($this->isAssoc($array1)) {
-			if ($array2 === PHP_INT_MAX) {
+			if ($array2 === self::NULL) {
 				// the type is calculated automatically. It could fails and it doesn't work with blob
 				foreach ($array1 as $k => $v) {
 					if ($colT===null) {
@@ -1156,7 +1152,7 @@ class DaoOne
 				}
 			}
 		} else {
-			if ($array2 === null) {
+			if ($array2 === self::NULL) {
 				// it uses a single list, the first value is the column, the second value
 				// is the type and the third is the value
 				for ($i = 0; $i < count($array1); $i += 3) {
