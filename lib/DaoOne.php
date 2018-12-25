@@ -513,7 +513,7 @@ class DaoOne
 
 			}
 		} else {
-			
+
 			$col=array();
 			$colT=array();
 			$p=array();
@@ -608,7 +608,7 @@ class DaoOne
 	}
 
 	/**
-	 * Run builder query and returns a mysqli_result. 
+	 * Run builder query and returns a mysqli_result.
 	 * @param bool $returnArray true=return an array. False return a mysqli_result
 	 * @return bool|\mysqli_result
 	 * @throws Exception

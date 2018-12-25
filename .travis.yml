@@ -1,10 +1,17 @@
 language: php
 php:
   - '5.6'
+  - '7.0'
   - '7.1'
   - '7.2'
+  - '7.3'
   - nightly
 services:
   - mysql
 before_script:
-- mysql -e "create database IF NOT EXISTS travisdb;" 
+  - mysql -e "create database IF NOT EXISTS travisdb;"
+  - composer install --no-interaction
+
+script:
+  - php vendor/bin/phpunit
+

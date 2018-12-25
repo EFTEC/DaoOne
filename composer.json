@@ -21,6 +21,11 @@
         "eftec\\": "lib/"
       }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "eftec\\tests\\": "tests/"
+        }
+    },
     "require": {
         "ext-mysqli": "*",
         "ext-json": "*"
@@ -29,7 +34,7 @@
         "eftec/validationone": "For keeping and storing the messages"
     },
     "require-dev": {
-        "phpunit/phpunit": "^5.7"
+        "phpunit/phpunit": "^5.7 || ^6.5"
     }
 }
 
