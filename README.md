@@ -528,7 +528,7 @@ $dao->from("producttype")
 
 Sequence is an alternative to AUTO_NUMERIC field.  It uses a table to generate an unique ID.  
 The sequence used is based on Twitter's Snowflake and it is generated based on 
-time (with microseconds), Node Id and a sequence.   This generates a LONG (int 32) value that it's unique
+time (with microseconds), Node Id and a sequence.   This generates a LONG (int 64) value that it's unique
 
 ### Creating a sequence
 
