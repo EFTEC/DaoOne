@@ -26,7 +26,7 @@ try {
     echo "<h2>Table truncate error:</h2>";
     echo $dao->lastError()."-".$e->getMessage()."<br>";
 }
-
+echo "<h1>You should run <a href='testbuilder.php'>testbuilder</a> first</h1>";
 
 try {
     echo "<h1>Table insert (it's ok if it fails because it could exist):</h1>";
@@ -56,24 +56,34 @@ try {
     echo $dao->lastQuery."<br>";
 
     $dao->insert("producttype"
-        ,['idproducttype','i',1 ,'name','s','Coca-Cola' ,'type','i',1]); // type1
+            ,['idproducttype','i',1 
+		    ,'name','s','Coca-Cola' 
+		    ,'type','i',1]); // type1
     echo $dao->lastQuery."<br>";
     $dao->insert("producttype"
         ,['idproducttype','i','name','s','type','i']
         ,[2,'Fanta',1]); // type 2
     echo $dao->lastQuery."<br>";
     $dao->insert("producttype"
-        ,['idproducttype'=>'i','name'=>'s','type'=>'i']
-        ,['idproducttype'=>3,'name'=>'Sprite','type'=>'1']); // type3 arrays declarative
+        ,['idproducttype'=>'i','name'=>'s','type'=>'i'] // type3 arrays declarative
+        ,['idproducttype'=>3,'name'=>'Sprite','type'=>'1']);  // with definition of types.
     echo $dao->lastQuery."<br>";
     $dao->insert("producttype"
-        ,['idproducttype'=>4,'name'=>"Kellogg's",'type'=>2]); // type 4 array declarative, automatic type
+            ,['idproducttype'=>4
+		    ,'name'=>"Kellogg's"
+		    ,'type'=>2]); // type 4 array declarative, automatic type
     echo $dao->lastQuery."<br>";
-    $dao->insert("producttype",['idproducttype','i','name','s','type','i'],[5,'Chocapic',2]);
+    $dao->insert("producttype"
+	        ,['idproducttype','i','name','s','type','i']
+	        ,[5,'Chocapic',2]);
     echo $dao->lastQuery."<br>";
-    $dao->insert("producttype",['idproducttype','i','name','s','type','i'],[6,'CaptainCrunch',2]);
+    $dao->insert("producttype"
+	    ,['idproducttype','i','name','s','type','i']
+	    ,[6,'CaptainCrunch',2]);
     echo $dao->lastQuery."<br>";
-    $dao->insert("producttype",['idproducttype','i','name','s','type','i'],[7,'will be deleted 1',2]);
+    $dao->insert("producttype"
+	    ,['idproducttype','i','name','s','type','i']
+	    ,[7,'will be deleted 1',2]);
     echo $dao->lastQuery."<br>";
     $dao->insert("producttype"
         ,['idproducttype','i','name','s','type','i']

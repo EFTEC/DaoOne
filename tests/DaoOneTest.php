@@ -75,6 +75,18 @@ class DaoOneTest extends TestCase
 
     }
 
+
+	public function test_sequence()
+	{
+		$this->daoOne->tableSequence='testsequence';
+		try {
+			$this->daoOne->createSequence();
+		} catch(Exception $ex) {
+			
+		}
+		$this->assertLessThan(3639088446091303982,$this->daoOne->getSequence(true),"sequence must be greater than 3639088446091303982");
+	}
+
     public function test_close()
     {
         $this->daoOne->close();

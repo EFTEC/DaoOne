@@ -10,7 +10,7 @@ use mysqli_result;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 3.21 20181217
+ * @version 3.22 20181217
  * @package eftec
  * @author Jorge Castro Castillo
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -22,6 +22,8 @@ class DaoOne
 	/** @var string|null Static date (when the date is empty) */
 	static $dateEpoch = "2000-01-01 00:00:00.00000";
 	//<editor-fold desc="server fields">
+	var $nodeId=1;
+	var $tableSequence='snowflake';
 	/** @var string server ip. Ex. 127.0.0.1 */
 	var $server;
 	var $user;
@@ -93,9 +95,10 @@ class DaoOne
 	 * @param string $db Ex. mybase
 	 * @param string $logFile Optional  log file. Example c:\\temp\log.log
 	 * @param string $charset Example utf8mb4
+	 * @param int $nodeId It is the id of the node (server). It is used for sequence. Up to 4096
 	 * @see DaoOne::connect()
 	 */
-	public function __construct($server, $user, $pwd, $db, $logFile = "",$charset='')
+	public function __construct($server, $user, $pwd, $db, $logFile = "",$charset='',$nodeId=1)
 	{
 		$this->server = $server;
 		$this->user = $user;
@@ -103,6 +106,7 @@ class DaoOne
 		$this->db = $db;
 		$this->logFile = $logFile;
 		$this->charset=$charset;
+		$this->nodeId=$nodeId;
 	}
 
 	/**
@@ -217,28 +221,76 @@ class DaoOne
 		$arr = explode(';', $listSql);
 		$ok = true;
 		foreach ($arr as $rawSql) {
-			if ($this->readonly) {
-				if (stripos($rawSql, 'insert ') === 0 || stripos($rawSql, 'update ') === 0 || stripos($rawSql, 'delete ') === 0) {
-					// we aren't checking SQL-DCL queries. Also, "insert into" is stopped but "  insert into" not.
-					$ok = false;
-					if (!$continueOnError) {
-						$this->throwError("Database is in READ ONLY MODE");
+			if(trim($rawSql)!='') {
+				if ($this->readonly) {
+					if (stripos($rawSql, 'insert ') === 0 || stripos($rawSql, 'update ') === 0 || stripos($rawSql, 'delete ') === 0) {
+						// we aren't checking SQL-DCL queries. Also, "insert into" is stopped but "  insert into" not.
+						$ok = false;
+						if (!$continueOnError) {
+							$this->throwError("Database is in READ ONLY MODE");
+						}
 					}
 				}
-			}
-			if ($this->logLevel>=2) {
-				$this->storeInfo($rawSql);
-			}
-			$r = $this->conn1->query($rawSql);
-			if ($r === false) {
-				$ok = false;
-				if (!$continueOnError) {
-					$this->throwError("Unable to run raw query\t" . $this->lastQuery);
+				if ($this->logLevel >= 2) {
+					$this->storeInfo($rawSql);
+				}
+				$r = $this->conn1->query($rawSql);
+				if ($r === false) {
+					$ok = false;
+					if (!$continueOnError) {
+						$this->throwError("Unable to run raw query\t" . $this->lastQuery);
+					}
 				}
 			}
 		}
 		return $ok;
 	}
+
+	/**
+	 * It returns the next sequence.
+	 * @param bool $asFloat
+	 * @return string . Example string(19) "3639032938181434317"
+	 * @throws Exception
+	 */
+	public function getSequence($asFloat=false) {
+		$sql="select next_{$this->tableSequence}({$this->nodeId}) id";
+		$r=$this->runRawQuery($sql,null,true);
+		if($asFloat) 
+			return floatval($r[0]['id']);
+		else
+			return $r[0]['id'];
+	}
+
+	/**
+	 * Create a table for a sequence
+	 * @param $tableName
+	 * @throws Exception
+	 */
+	public function createSequence() {
+		$sql="CREATE TABLE `{$this->tableSequence}` (
+		  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+		  `stub` char(1) NOT NULL DEFAULT '',
+		  PRIMARY KEY (`id`),
+		  UNIQUE KEY `stub` (`stub`)
+		) ENGINE=MyISAM AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
+		-- insert the firsrt value
+		INSERT INTO `{$this->tableSequence}` (`stub`) VALUES ('a');
+		SET GLOBAL log_bin_trust_function_creators = 1;";
+		$this->runMultipleRawQuery($sql);
+		$sql="CREATE FUNCTION `next_{$this->tableSequence}`(node integer) RETURNS BIGINT(20)
+			BEGIN
+			    DECLARE epoch BIGINT(20);
+			    DECLARE current_ms BIGINT(20);
+			    DECLARE incr BIGINT(20);
+			    SET current_ms = round(UNIX_TIMESTAMP(CURTIME(4)) * 1000);
+			    SET epoch = 1459440000000; 
+			    REPLACE INTO {$this->tableSequence} (stub) VALUES ('a');
+			    SELECT LAST_INSERT_ID() INTO incr;    
+			RETURN (current_ms - epoch) << 22 | (node << 12) | (incr % 4096);
+			END;";
+		$this->runRawQuery($sql);
+	}
+
 
 
 
@@ -875,7 +927,6 @@ class DaoOne
 		$stmt = $this->prepare($rawSql);
 		$parType = '';
 		$values = [];
-
 		for ($i = 0; $i < count($param); $i += 2) {
 			$parType .= $param[$i];
 			$values[] = $param[$i + 1];
@@ -997,6 +1048,7 @@ class DaoOne
 			}
 			$sql= /** @lang text */"insert into `".$this->from.'` '.$this->constructInsert();
 			$param=[];
+			
 			for($i=0;$i<count($this->whereParamType);$i++) {
 				$param[]=$this->whereParamType[$i];
 				$param[]=$this->whereParamValue['i_'.$i];
@@ -1133,7 +1185,6 @@ class DaoOne
 						$colT[] = '?';
 					}
 					$vt=$this->getType($v);
-
 					$param[] = $vt;
 					$param[] = $v;
 				}

@@ -524,7 +524,39 @@ $dao->from("producttype")
 ```
 > Generates the query: **delete from producttype where `idproducttype`=?** ....
 
+## Sequence
+
+Sequence is an alternative to AUTO_NUMERIC field.  It uses a table to generate an unique ID.  
+The sequence used is based on Twitter's Snowflake and it is generated based on 
+time (with microseconds), Node Id and a sequence.   This generates a LONG (int 32) value that it's unique
+
+### Creating a sequence
+
+* **$dao->nodeId** set the node value (default is 1). If we want unique values amongst different clusters,
+ then we could set the value
+of the node as unique. The limit is up to 1024 nodes.
+* **$dao->tableSequence** it sets the table (and function), the default value is snowflake.
+
+```
+$dao->nodeId=1; // optional
+$dao->tableSequence='snowflake'; // optional
+$dao->createSequence(); // it creates a table called snowflake and a function called next_snowflake()
+```
+
+### Using the sequence
+
+* **$dao->getSequence()** returns the last sequence. If the sequence fails to generate, then it returns -1.
+ The function could fails if the function is called more than 4096 times every 1/1000th second.
+
+```
+$dao->getSequence() // string(19) "3639032938181434317" 
+```
+
+
+
+
 ## Changelist
+* 3.22 2018-12-30 Added sequence
 * 3.21 2018-12-17 Fixed a bug with parameters, set() and insert(). There are several ways to do an insertar.  Now NULL is self:null
 * 3.20 2018-12-15 Fixed bug with parameters and insert(). 
 * 3.19 2018-12-09 Now null parameters are considered null.  We use instead PHP_INT_MAX to indicate when the value is not set. 
