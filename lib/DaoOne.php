@@ -88,7 +88,7 @@ class DaoOne
 	//</editor-fold>
 
 	/**
-	 * ClassUtilDB constructor.  It doesn't connect to the database.
+	 * DaoOne constructor.  It doesn't connect to the database.
 	 * @param string $server server ip. Ex. 127.0.0.1
 	 * @param string $user Ex. root
 	 * @param string $pwd Ex. 12345
