@@ -467,6 +467,24 @@ class DaoOne
 		return self::dateTimePHP2Sql($tmpDate); // it always returns a date with time. Mysql Ignores it.
 	}
 
+	/**
+	 * Returns the current date(and time) in Text format.
+	 * @param bool $hasTime
+	 * @param bool $hasMicroseconds
+	 * @return string
+	 * @see DaoOne::$dateTimeFormat
+	 * @throws Exception
+	 */
+	public static function dateTextNow($hasTime=true,$hasMicroseconds=false)
+	{
+		$tmpDate = new DateTime();
+		if ($hasTime) {
+			return $tmpDate->format(($hasMicroseconds!==false) ? self::$dateTimeMicroFormat : self::$dateTimeFormat);
+		}  else {
+			return $tmpDate->format(self::$dateFormat);
+		}
+	}	
+	
 	//</editor-fold>
 
 	//<editor-fold desc="Query Builder functions" defaultstate="collapsed" >

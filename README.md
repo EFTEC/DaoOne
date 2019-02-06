@@ -556,7 +556,7 @@ $dao->getSequence() // string(19) "3639032938181434317"
 
 
 ## Changelist
-* 3.23 2019-06-06 Added a new format of date
+* 3.24 2019-06-06 Added a new format of date
 * 3.22 2018-12-30 Added sequence
 * 3.21 2018-12-17 Fixed a bug with parameters, set() and insert(). There are several ways to do an insertar.  Now NULL is self:null
 * 3.20 2018-12-15 Fixed bug with parameters and insert(). 
