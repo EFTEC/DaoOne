@@ -110,14 +110,16 @@ try {
         <td>".showDate(DaoOne::dateTimeSql2PHP($row['coldate']))."</td>
         <td>".showDate(DaoOne::dateTimeSql2PHP($row['coldatetime']))."</td>
         <td>".showDate(DaoOne::dateTimeSql2PHP($row['coltimestamp']))."</td>
-        <td>".DaoOne::dateTimeSql2Text($row['coldate'])."</td>
-        <td>".DaoOne::dateTimeSql2Text($row['coldatetime'])."</td>
-        <td>".DaoOne::dateTimeSql2Text($row['coltimestamp'])."</td>
+        <td>".DaoOne::dateSql2Text($row['coldate'])."</td>
+        <td>".DaoOne::dateSql2Text($row['coldatetime'])."</td>
+        <td>".DaoOne::dateSql2Text($row['coltimestamp'])."</td>
         </tr>";
     }
     echo "</table><br>";
+    echo "<hr>";
+    echo "date:";
     
-    echo DaoOne::dateTimeText2Sql("15/09/2018");
+    echo DaoOne::dateText2Sql("15/09/2018",false);
     
     // second method (fetch all fields)
     //$allRows=$rows->fetch_all(MYSQLI_ASSOC);

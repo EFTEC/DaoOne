@@ -2,6 +2,7 @@
 
 namespace eftec\tests;
 
+use DateTime;
 use eftec\DaoOne;
 use Exception;
 use PHPUnit\Framework\TestCase;
@@ -9,6 +10,7 @@ use PHPUnit\Framework\TestCase;
 
 class DaoOneTest extends TestCase
 {
+	/** @var DaoOne */
     protected $daoOne;
 
     public function setUp()
@@ -17,16 +19,17 @@ class DaoOneTest extends TestCase
         $this->daoOne->connect();
     }
 
-    public function test___construct()
-    {
 
-    }
-
+	/**
+	 * @doesNotPerformAssertions
+	 */
     public function test_db()
     {
-        $this->daoOne->db('travisdb');
+         $this->daoOne->db('travisdb');
     }
-
+	/**
+	 * @doesNotPerformAssertions
+	 */
     public function test_setCharset()
     {
         $this->daoOne->setCharset('utf8');
@@ -74,7 +77,16 @@ class DaoOneTest extends TestCase
 	    $this->assertEquals(0,$r,'insert must value 0');
 
     }
+	public function test_time()
+	{
+		$this->assertEquals('2019-02-06 00:00:00',DaoOne::dateText2Sql('2019-02-06',false));
+		$this->assertEquals('2019-02-06 05:06:07',DaoOne::dateText2Sql('2019-02-06T05:06:07Z',true));
+		$this->assertEquals('2018-02-06 05:06:07.123000',DaoOne::dateText2Sql('2018-02-06T05:06:07.123Z',true));
 
+		$this->assertEquals('2019-02-06',DaoOne::dateSql2Text('2019-02-06'));
+		$this->assertEquals('2019-02-06T05:06:07Z',DaoOne::dateSql2Text('2019-02-06 05:06:07'));
+		$this->assertEquals('2018-02-06T05:06:07.123000Z',DaoOne::dateSql2Text('2018-02-06 05:06:07.123000'));
+	}
 
 	public function test_sequence()
 	{
@@ -86,7 +98,9 @@ class DaoOneTest extends TestCase
 		}
 		$this->assertLessThan(3639088446091303982,$this->daoOne->getSequence(true),"sequence must be greater than 3639088446091303982");
 	}
-
+	/**
+	 * @doesNotPerformAssertions
+	 */
     public function test_close()
     {
         $this->daoOne->close();
@@ -97,10 +111,7 @@ class DaoOneTest extends TestCase
         $this->assertEquals(null,$this->daoOne->getMessages(),'this is not a message container');
     }
 
-    public function test_runMultipleRawQuery()
-    {
 
-    }
 
     public function test_startTransaction()
     {
@@ -119,21 +130,7 @@ class DaoOneTest extends TestCase
         $this->assertEquals(false,(false),'transaction is not open');
     }
 
-    public function test_dateTimePHP2Sql()
-    {
-
-    }
-
-    public function test_unixtime2Sql()
-    {
-
-    }
-
-    public function test_dateTimeSql2PHP()
-    {
-
-    }
-
+ 
     public function test_select()
     {
         $this->assertInstanceOf(DaoOne::class,$this->daoOne->select('select 1 from DUAL'));
@@ -144,10 +141,7 @@ class DaoOneTest extends TestCase
         $this->assertInstanceOf(DaoOne::class,$this->daoOne->join('tablejoin on t1.field=t2.field'));
     }
 
-    public function test_innerjoin()
-    {
-
-    }
+ 
 
     public function test_from()
     {
@@ -199,103 +193,31 @@ class DaoOneTest extends TestCase
         $this->assertInstanceOf(DaoOne::class,$this->daoOne->distinct());
     }
 
-    public function test_toList()
-    {
-
-    }
-
-    public function test_runGen()
-    {
-
-    }
+   
 
     public function test_generateSqlFields()
     {
         $this->assertInstanceOf(DaoOne::class,$this->daoOne->generateSqlFields(true));
     }
 
-    public function test_sqlGen()
-    {
-
-    }
-
-    public function test_prepare()
-    {
-
-    }
+   
 
     public function test_runQuery()
     {
         $this->assertEquals(true,$this->daoOne->runQuery($this->daoOne->prepare('select 1 from dual'))); $this->assertEquals([1=>1],$this->daoOne->select('1')->from('dual')->first(),'it must runs');
     }
 
-    public function test_toResult()
-    {
-
-    }
-
-    public function test_first()
-    {
-
-    }
-
-    public function test_firstScalar()
-    {
-
-    }
-
-    public function test_last()
-    {
-
-    }
 
     public function test_runRawQuery()
     {
         $this->assertEquals([0=>[1=>1]],$this->daoOne->runRawQuery('select 1',null,true));
     }
-
-    public function test_insert_id()
-    {
-
-    }
-
-    public function test_affected_rows()
-    {
-
-    }
-
-    public function test_update()
-    {
-
-    }
-
-    public function test_insert()
-    {
-
-    }
-
-    public function test_delete()
-    {
-
-    }
-
+	/**
+	 * @doesNotPerformAssertions
+	 */
     public function test_setEncryption()
     {
         $this->daoOne->setEncryption('123','somesalt','AES-128-CTR');
     }
 
-    public function test_encrypt()
-    {
-
-    }
-
-    public function test_decrypt()
-    {
-
-    }
-
-    public function test_lastError()
-    {
-
-    }
 }
