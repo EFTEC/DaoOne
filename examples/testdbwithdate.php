@@ -47,7 +47,7 @@ echo "<br>DaoOne::dateTimePHP2Sql(null) : ";
 var_dump(DaoOne::dateTimePHP2Sql(null));
 
 
-die(1);
+
 // running a raw query (unprepared statement)
 try {
     echo "<h1>Table creation:</h1>";
@@ -98,19 +98,27 @@ try {
 
     $rows = $stmt->get_result();
 
-    echo "<table cellpadding='4px'><tr><th>Id</th><th>Name</th><th>Name</th><th>Name</th><th>Name</th></tr>";
+    echo "<table cellpadding='4px'><tr>
+		<th>Id</th><th>Name</th><th>Date</th><th>DateTime</th><th>Timestamp</th>
+		<th>Date Text</th><th>DateTime Text</th><th>Timestamp Text</th></tr>";
 
     // first method
     while ($row = $rows->fetch_assoc()) {
         echo "<tr>
         <td>{$row['idproduct']}</td>
         <td>{$row['name']}</td>
-        <td>".DaoOne::dateTimeSql2PHP($row['coldate'])->format('r')."</td>
-        <td>".DaoOne::dateTimeSql2PHP($row['coldatetime'])->format('r')."</td>
-        <td>".DaoOne::dateTimeSql2PHP($row['coltimestamp'])->format('r')."</td>
+        <td>".showDate(DaoOne::dateTimeSql2PHP($row['coldate']))."</td>
+        <td>".showDate(DaoOne::dateTimeSql2PHP($row['coldatetime']))."</td>
+        <td>".showDate(DaoOne::dateTimeSql2PHP($row['coltimestamp']))."</td>
+        <td>".DaoOne::dateTimeSql2Text($row['coldate'])."</td>
+        <td>".DaoOne::dateTimeSql2Text($row['coldatetime'])."</td>
+        <td>".DaoOne::dateTimeSql2Text($row['coltimestamp'])."</td>
         </tr>";
     }
     echo "</table><br>";
+    
+    echo DaoOne::dateTimeText2Sql("15/09/2018");
+    
     // second method (fetch all fields)
     //$allRows=$rows->fetch_all(MYSQLI_ASSOC);
 
@@ -119,3 +127,7 @@ try {
     echo $dao->lastError()."-".$e->getMessage()."<br>";
 }
 
+function showDate($date) {
+	if ($date===null) return "null";
+	return $date->format('r');
+}

@@ -10,7 +10,7 @@ use mysqli_result;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 3.22 20181217
+ * @version 3.23 20190206
  * @package eftec
  * @author Jorge Castro Castillo
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -60,7 +60,18 @@ class DaoOne
 	/** @var string last query executed */
 	var $lastQuery;
 	var $lastParam=[];
-	var $dateFormat = 'aa';
+	/**
+	 * Human readable date format
+	 * @var string 
+	 * @see https://secure.php.net/manual/en/function.date.php
+	 */
+	public static $dateFormat = 'd/m/Y';
+	/**
+	 * Human readable datetime format
+	 * @var string
+	 * @see https://secure.php.net/manual/en/function.date.php
+	 */
+	public static $dateTimeFormat = 'd/m/Y H:i:s';
 
 	private $genSqlFields=true;
 	var $lastSqlFields='';
@@ -380,27 +391,64 @@ class DaoOne
 	/**
 	 * Convert date, from mysql -> php
 	 * @param $sqlField
-	 * @return bool|DateTime
+	 * @param bool $hasTime
+	 * @return bool|DateTime|null
 	 */
-	public static function dateTimeSql2PHP($sqlField)
+	public static function dateTimeSql2PHP($sqlField,&$hasTime=false)
 	{
 		// 3  2016-01-31 00:00:00 -> 01/01/2016 00:00:00
 		// mysql always returns the date/datetime/timestmamp in ansi format.
-		if ($sqlField == "") {
-			return DaoOne::$dateEpoch;
+		if ($sqlField === "" || $sqlField===null) {
+			if (DaoOne::$dateEpoch===null) return null;
+			return DateTime::createFromFormat('Y-m-d H:i:s.u',DaoOne::$dateEpoch);
 		}
 		if (strpos($sqlField, '.')) {
 			// with date with time and microseconds
+			$hasTime=true;
 			return DateTime::createFromFormat('Y-m-d H:i:s.u', $sqlField);
 		} else {
 			if (strpos($sqlField, ':')) {
 				// date with time
+				$hasTime=true;
 				return DateTime::createFromFormat('Y-m-d H:i:s', $sqlField);
 			} else {
 				// only date
+				$hasTime=false;
 				return DateTime::createFromFormat('Y-m-d', $sqlField);
 			}
 		}
+	}
+
+	/**
+	 * Convert date, from mysql -> text (using a format pre-established)
+	 * @param $sqlField
+	 * @param string|null $format
+	 * @return string
+	 */
+	public static function dateTimeSql2Text($sqlField,$format=null)
+	{
+		$hasTime=false;
+		$tmpDate = self::dateTimeSql2PHP($sqlField,$hasTime);
+		if ($tmpDate===null) return null;
+		if ($hasTime) {
+			return $tmpDate->format($format!==null? $format : self::$dateTimeFormat);
+		}  else {
+			return $tmpDate->format($format!==null? $format : self::$dateFormat);
+		}
+	}
+
+	/**
+	 * Convert date, from mysql -> text (using a format pre-established)
+	 * @param $textDate
+	 * @param string|null $format
+	 * @return string
+	 */
+	public static function dateTimeText2Sql($textDate,$format=null)
+	{
+		$tmpDate = DateTime::createFromFormat($format===null? 
+			$format 
+			: self::$dateTimeFormat, $textDate);
+		return self::dateTimePHP2Sql($tmpDate); // it always returns a date with time. Mysql Ignores it.
 	}
 
 	//</editor-fold>
