@@ -104,6 +104,7 @@ class DaoOneTest extends TestCase
 		$this->assertLessThan(3639088446091303982,$this->daoOne->getSequencePHP(false),"sequence must be greater than 3639088446091303982");
 		$s1=$this->daoOne->getSequencePHP(false);
 		$s2=$this->daoOne->getSequencePHP(false);
+
 		$this->assertTrue($s1!=$s2,"sequence must not be the same");
 		
 	}	
@@ -221,12 +222,33 @@ class DaoOneTest extends TestCase
     {
         $this->assertEquals([0=>[1=>1]],$this->daoOne->runRawQuery('select 1',null,true));
     }
+
 	/**
-	 * @doesNotPerformAssertions
+	 * @throws Exception
 	 */
     public function test_setEncryption()
     {
-        $this->daoOne->setEncryption('123','somesalt','AES-128-CTR');
+        $this->daoOne->setEncryption('123//*/*saass11___1212fgbl@#€€"','123//*/*saass11___1212fgbl@#€€"','AES-256-CTR');
+        $value=$this->daoOne->encrypt("bv `lfg+hlc ,vc´,c35'ddl ld_vcvñvc +*=/\\");
+        $this->assertTrue(strlen($value)>10,"Encrypted");
+        $return=$this->daoOne->decrypt($value);
+	    $this->assertEquals("bv `lfg+hlc ,vc´,c35'ddl ld_vcvñvc +*=/\\",$return,"decrypt correct");
+
+	    $return=$this->daoOne->decrypt("wrong".$value);
+	    $this->assertEquals(false,$return,"decrypt must fail");
+	    $return=$this->daoOne->decrypt("");
+	    $this->assertEquals(false,$return,"decrypt must fail");
+	    $return=$this->daoOne->decrypt(null);
+	    $this->assertEquals(false,$return,"decrypt must fail");
+	    // iv =true
+	    $value1=$this->daoOne->encrypt("abc");
+	    $value2=$this->daoOne->encrypt("abc");
+	    $this->assertTrue($value1!=$value2,"Values must be different");
+	    // iv =true
+	    $this->daoOne->encryption->iv=false;
+	    $value1=$this->daoOne->encrypt("abc_ABC/abc*abc1234567890[]{[");
+	    $value2=$this->daoOne->encrypt("abc_ABC/abc*abc1234567890[]{[");
+	    $this->assertTrue($value1==$value2,"Values must be equals");     
     }
 
 }

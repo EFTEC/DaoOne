@@ -1,4 +1,7 @@
-<?php
+<?php 
+/** @noinspection SqlWithoutWhere */
+/** @noinspection SqlResolve */
+/** @noinspection SqlNoDataSourceInspection */
 
 namespace eftec;
 
@@ -10,7 +13,7 @@ use mysqli_result;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 3.25 20190306
+ * @version 3.26 20190206
  * @package eftec
  * @author Jorge Castro Castillo
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -29,13 +32,17 @@ class DaoOne
 	 * $mask0 and $mask1 must have the same number of elements.
 	 * Each value must be from 0..17 (the size of snowflake, if it is used with snowflake)
 	 * $masks0=[0] and masks1[3] means that 01234->31204
-	 * @var array 
+	 * number 14,15,16,17 ($masks1) has the highest entrophy
+	 * @var array
 	 * @see \eftec\DaoOne::getUnpredictable
 	 */
-	var $masks0=[3,4,6,9,2,13,0];
-	var $masks1=[5,6,8,2,5,5,3];
+	var $masks0=[2,0,4,5];
+	var $masks1=[16,13,12,11];
 	
-	
+	/** @var DaoOneEncryption */
+	var $encryption=null;
+
+
 	/** @var string server ip. Ex. 127.0.0.1 */
 	var $server;
 	var $user;
@@ -50,16 +57,6 @@ class DaoOne
 	/** @var  \mysqli */
 	var $conn1;
 	//</editor-fold>
-	//<editor-fold desc="encryption fields">
-	/** @var bool Encryption enabled */
-	var $encEnabled = false;
-	/** @var string Encryption password */
-	var $encPassword = '';
-	/** @var string Encryption salt */
-	var $encSalt = '';
-	/** @var string Encryption method, See http://php.net/manual/en/function.openssl-get-cipher-methods.php */
-	var $encMethod = '';
-	//</editor-fold>
 	/** @var  bool */
 	var $transactionOpen;
 	/** @var bool if the database is in READ ONLY mode or not. If true then we must avoid to write in the database. */
@@ -72,13 +69,13 @@ class DaoOne
 	/** @var string last query executed */
 	var $lastQuery;
 	var $lastParam=[];
-	
-	
-	
-	
+
+
+
+
 	/**
 	 * Text date format
-	 * @var string 
+	 * @var string
 	 * @see https://secure.php.net/manual/en/function.date.php
 	 */
 	public static $dateFormat = 'Y-m-d';
@@ -140,6 +137,7 @@ class DaoOne
 		$this->logFile = $logFile;
 		$this->charset=$charset;
 		$this->nodeId=$nodeId;
+		$this->encryption=new DaoOneEncryption($pwd,$user.$pwd); // by default, the encryption uses the same password than the db.
 	}
 
 	/**
@@ -299,7 +297,7 @@ class DaoOne
 		if ($unpredictable) {
 			return $this->getUnpredictable($r[0]['id']);
 		}
-		if($asFloat) 
+		if($asFloat)
 			return floatval($r[0]['id']);
 		else
 			return $r[0]['id'];
@@ -319,10 +317,11 @@ class DaoOne
 		$timestamp=(double)round($ms*1000);
 		$rand=(fmod($ms,1)*1000000)%4096; // 4096= 2^12 It is the millionth of seconds
 		$calc=(($timestamp-1459440000000)<<22) + ($this->nodeId<<12) + $rand;
+		usleep(1);
 		if ($unpredictable) {
-			return $this->getUnpredictable($calc);
+			return ''.$this->getUnpredictable($calc);
 		}
-		return $calc;
+		return ''.$calc;
 	}
 
 
@@ -330,28 +329,30 @@ class DaoOne
 	/**
 	 * It uses \eftec\DaoOne::$masks0 and \eftec\DaoOne::$masks1 to flip
 	 * the number, so they are not as predictable.
-	 * This function doesn't add entrophy. However, the generation of Snowflakes id 
+	 * This function doesn't add entrophy. However, the generation of Snowflakes id
 	 * (getSequence/getSequencePHP) generates its own entrophy. Also,
 	 * both masks0[] and masks1[] adds an extra secrecy.
 	 * @param $number
 	 * @return mixed
 	 */
 	public function getUnpredictable($number) {
+		$string="".$number;
 		$maskSize=count($this->masks0);
+
 		for($i=0;$i<$maskSize;$i++) {
 			$init=$this->masks0[$i];
 			$end=$this->masks1[$i];
-			$tmp=$number[$end];
-			$number=substr_replace($number,$number[$init],$end,1);
-			$number=substr_replace($number,$tmp,$init,1);
+			$tmp=$string[$end];
+			$string=substr_replace($string,$string[$init],$end,1);
+			$string=substr_replace($string,$tmp,$init,1);
 		}
-		return $number;
+		return $string;
 	}
 	/**
 	 * it is the inverse of \eftec\DaoOne::getUnpredictable
 	 * @param $number
 	 * @return mixed
-	 * @see \eftec\DaoOne::$masks0 
+	 * @see \eftec\DaoOne::$masks0
 	 * @see \eftec\DaoOne::$masks1
 	 */
 	public function getUnpredictableInv($number) {
@@ -364,7 +365,7 @@ class DaoOne
 			$number=substr_replace($number,$tmp,$init,1);
 		}
 		return $number;
-	}	
+	}
 	/**
 	 * Create a table for a sequence
 	 * @throws Exception
@@ -460,11 +461,11 @@ class DaoOne
 			return DaoOne::$dateEpoch;
 		}
 		if ($date->format("u")!='000000') {
-			return $date->format('Y-m-d H:i:s.u');	
+			return $date->format('Y-m-d H:i:s.u');
 		} else {
 			return $date->format('Y-m-d H:i:s');
 		}
-		
+
 	}
 
 	/**
@@ -535,7 +536,7 @@ class DaoOne
 	}
 
 	/**
-	 * Convert date, from mysql -> text (using a format pre-established)		
+	 * Convert date, from mysql -> text (using a format pre-established)
 	 * @param $textDate
 	 * @param bool $hasTime
 	 * @return string
@@ -543,10 +544,10 @@ class DaoOne
 	public static function dateText2Sql($textDate, $hasTime=true)
 	{
 		$tmpFormat=(($hasTime)
-				?(strpos($textDate,'.')===false
-					?self::$dateTimeFormat
-					:self::$dateTimeMicroFormat)
-				: self::$dateFormat);
+			?(strpos($textDate,'.')===false
+				?self::$dateTimeFormat
+				:self::$dateTimeMicroFormat)
+			: self::$dateFormat);
 		$tmpDate = DateTime::createFromFormat($tmpFormat, $textDate);
 		if(!$hasTime && $tmpDate) {
 			$tmpDate->setTime(0,0,0);
@@ -570,8 +571,20 @@ class DaoOne
 		}  else {
 			return $tmpDate->format(self::$dateFormat);
 		}
-	}	
-	
+	}
+	public static function dateMysqlNow($hasTime=true,$hasMicroseconds=false)
+	{
+		try {
+			$tmpDate = new DateTime();
+		} catch (Exception $e) {
+			$tmpDate=null;
+		}
+		if ($hasTime) {
+			return $tmpDate->format(($hasMicroseconds!==false) ? 'Y-m-d H:i:s.u' : 'Y-m-d H:i:s');
+		}  else {
+			return $tmpDate->format('Y-m-d');
+		}
+	}
 	//</editor-fold>
 
 	//<editor-fold desc="Query Builder functions" defaultstate="collapsed" >
@@ -1217,7 +1230,7 @@ class DaoOne
 			}
 			$sql= /** @lang text */"insert into `".$this->from.'` '.$this->constructInsert();
 			$param=[];
-			
+
 			for($i=0;$i<count($this->whereParamType);$i++) {
 				$param[]=$this->whereParamType[$i];
 				$param[]=$this->whereParamValue['i_'.$i];
@@ -1448,48 +1461,35 @@ class DaoOne
 	 */
 	public function setEncryption($password, $salt, $encMethod)
 	{
+
 		if (!extension_loaded('openssl')) {
-			$this->encEnabled = false;
+			$this->encryption->encEnabled=false;
 			$this->throwError("OpenSSL not loaded, encryption disabled");
 		} else {
-			$this->encEnabled = true;
-			$this->encPassword = $password;
-			$this->encSalt = $salt;
-			$this->encMethod = $encMethod;
+			$this->encryption->encEnabled=true;
+			$this->encryption->setEncryption($password,$salt,$encMethod);
 		}
 	}
-
 	/**
-	 * It is a two way encryption.
-	 * @param $data
-	 * @return string
-	 */
-	public function encrypt($data)
-	{
-		if (!$this->encEnabled) return $data; // no encryption
-		$iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length($this->encMethod));
-		$encrypted_string = bin2hex($iv) . openssl_encrypt($this->encSalt . $data, $this->encMethod, $this->encPassword, 0, $iv);
-		return urlencode($encrypted_string);
-	}
-
-	/**
-	 * It is a two way decryption
+	 * Wrapper of DaoOneEncryption->encrypt
+	 * @see \eftec\DaoOneEncryption::encrypt
 	 * @param $data
 	 * @return bool|string
 	 */
-	public function decrypt($data)
-	{
-		if (!$this->encEnabled) return $data; // no encryption
-		$iv_strlen = 2 * openssl_cipher_iv_length($this->encMethod);
-		if (preg_match("/^(.{" . $iv_strlen . "})(.+)$/", $data, $regs)) {
-			list(, $iv, $crypted_string) = $regs;
-			$decrypted_string = openssl_decrypt($crypted_string, $this->encMethod, $this->encPassword, 0, hex2bin($iv));
-			return urldecode(substr($decrypted_string, strlen($this->encSalt)));
-		} else {
-			return false;
-		}
+	
+	public function encrypt($data) {
+		return $this->encryption->encrypt($data);
 	}
 
+	/**
+	 * Wrapper of DaoOneEncryption->decrypt
+	 * @see \eftec\DaoOneEncryption::decrypt
+	 * @param $data
+	 * @return bool|string
+	 */
+	public function decrypt($data) {
+		return $this->encryption->decrypt($data);
+	}
 	//</editor-fold>
 
 	//<editor-fold desc="Log functions" defaultstate="collapsed" >
@@ -1556,8 +1556,12 @@ class DaoOne
 
 		$txtW = str_replace("\r\n", " ", $txtW);
 		$txtW = str_replace("\n", " ", $txtW);
-		$now = new DateTime();
-		@fwrite($fp, $now->format('c')."\t".$level."\t".$txtW . "\n");
+		try {
+			$now = new DateTime();
+			@fwrite($fp, $now->format('c')."\t".$level."\t".$txtW . "\n");
+		} catch (Exception $e) {
+		}
+		
 		@fclose($fp);
 	}
 

@@ -575,6 +575,7 @@ $dao->getSequencePHP(true) // string(19) "1739032938181434311"
 
 
 ## Changelist
+* 3.26 2019-03-06 Now Encryption has it's own class.
 * 3.25 2019-03-06 Added getSequencePHP(), getUnpredictable() and getUnpredictableInv()
 * 3.24 2019-02-06 Added a new format of date
 * 3.22 2018-12-30 Added sequence
