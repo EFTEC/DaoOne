@@ -98,6 +98,15 @@ class DaoOneTest extends TestCase
 		}
 		$this->assertLessThan(3639088446091303982,$this->daoOne->getSequence(true),"sequence must be greater than 3639088446091303982");
 	}
+
+	public function test_sequence2()
+	{
+		$this->assertLessThan(3639088446091303982,$this->daoOne->getSequencePHP(false),"sequence must be greater than 3639088446091303982");
+		$s1=$this->daoOne->getSequencePHP(false);
+		$s2=$this->daoOne->getSequencePHP(false);
+		$this->assertTrue($s1!=$s2,"sequence must not be the same");
+		
+	}	
 	/**
 	 * @doesNotPerformAssertions
 	 */

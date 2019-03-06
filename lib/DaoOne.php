@@ -10,7 +10,7 @@ use mysqli_result;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 3.24 20190206
+ * @version 3.25 20190306
  * @package eftec
  * @author Jorge Castro Castillo
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -24,6 +24,18 @@ class DaoOne
 	//<editor-fold desc="server fields">
 	var $nodeId=1;
 	var $tableSequence='snowflake';
+	/**
+	 * it is used to generate an unpredictable number by flipping positions. It must be changed.
+	 * $mask0 and $mask1 must have the same number of elements.
+	 * Each value must be from 0..17 (the size of snowflake, if it is used with snowflake)
+	 * $masks0=[0] and masks1[3] means that 01234->31204
+	 * @var array 
+	 * @see \eftec\DaoOne::getUnpredictable
+	 */
+	var $masks0=[3,4,6,9,2,13,0];
+	var $masks1=[5,6,8,2,5,5,3];
+	
+	
 	/** @var string server ip. Ex. 127.0.0.1 */
 	var $server;
 	var $user;
@@ -60,6 +72,10 @@ class DaoOne
 	/** @var string last query executed */
 	var $lastQuery;
 	var $lastParam=[];
+	
+	
+	
+	
 	/**
 	 * Text date format
 	 * @var string 
@@ -265,19 +281,90 @@ class DaoOne
 
 	/**
 	 * It returns the next sequence.
+	 * It gets a collision free number if we don't do more than one operation
+	 * every 0.0001 seconds.
+	 * But, if we do 2 or more operations per seconds then, it adds a sequence number from
+	 * 0 to 4095
+	 * So, the limit of this function is 4096 operations per 0.0001 second.
+	 *
+	 * @see \eftec\DaoOne::getSequencePHP It's the same but it uses less resources but lacks of a sequence.
 	 * @param bool $asFloat
+	 * @param bool $unpredictable
 	 * @return string . Example string(19) "3639032938181434317"
 	 * @throws Exception
 	 */
-	public function getSequence($asFloat=false) {
+	public function getSequence($asFloat=false,$unpredictable=false) {
 		$sql="select next_{$this->tableSequence}({$this->nodeId}) id";
 		$r=$this->runRawQuery($sql,null,true);
+		if ($unpredictable) {
+			return $this->getUnpredictable($r[0]['id']);
+		}
 		if($asFloat) 
 			return floatval($r[0]['id']);
 		else
 			return $r[0]['id'];
 	}
 
+	/**
+	 * It ensures a collision free number if we don't do more than one operation
+	 * per 0.0001 second However, even after all, we generate a pseudo random number (0-4095)
+	 * so the chances of collision is 1/4095 (per two operations done every 0.0001 second).
+	 * @see \eftec\DaoOne::getSequence
+	 * @param bool $unpredictable
+	 * @return float
+	 */
+	public function getSequencePHP($unpredictable=false) {
+		$ms=microtime(true);
+		//$ms=1000;
+		$timestamp=(double)round($ms*1000);
+		$rand=(fmod($ms,1)*1000000)%4096; // 4096= 2^12 It is the millionth of seconds
+		$calc=(($timestamp-1459440000000)<<22) + ($this->nodeId<<12) + $rand;
+		if ($unpredictable) {
+			return $this->getUnpredictable($calc);
+		}
+		return $calc;
+	}
+
+
+
+	/**
+	 * It uses \eftec\DaoOne::$masks0 and \eftec\DaoOne::$masks1 to flip
+	 * the number, so they are not as predictable.
+	 * This function doesn't add entrophy. However, the generation of Snowflakes id 
+	 * (getSequence/getSequencePHP) generates its own entrophy. Also,
+	 * both masks0[] and masks1[] adds an extra secrecy.
+	 * @param $number
+	 * @return mixed
+	 */
+	public function getUnpredictable($number) {
+		$maskSize=count($this->masks0);
+		for($i=0;$i<$maskSize;$i++) {
+			$init=$this->masks0[$i];
+			$end=$this->masks1[$i];
+			$tmp=$number[$end];
+			$number=substr_replace($number,$number[$init],$end,1);
+			$number=substr_replace($number,$tmp,$init,1);
+		}
+		return $number;
+	}
+	/**
+	 * it is the inverse of \eftec\DaoOne::getUnpredictable
+	 * @param $number
+	 * @return mixed
+	 * @see \eftec\DaoOne::$masks0 
+	 * @see \eftec\DaoOne::$masks1
+	 */
+	public function getUnpredictableInv($number) {
+		$maskSize=count($this->masks0);
+		for($i=$maskSize-1;$i>=0;$i--) {
+			$init=$this->masks1[$i];
+			$end=$this->masks0[$i];
+			$tmp=$number[$end];
+			$number=substr_replace($number,$number[$init],$end,1);
+			$number=substr_replace($number,$tmp,$init,1);
+		}
+		return $number;
+	}	
 	/**
 	 * Create a table for a sequence
 	 * @throws Exception

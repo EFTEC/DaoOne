@@ -545,18 +545,38 @@ $dao->createSequence(); // it creates a table called snowflake and a function ca
 
 ### Using the sequence
 
-* **$dao->getSequence()** returns the last sequence. If the sequence fails to generate, then it returns -1.
+* **$dao->getSequence([unpredictable=false])** returns the last sequence. If the sequence fails to generate, then it returns -1.
  The function could fails if the function is called more than 4096 times every 1/1000th second.
 
 ```
 $dao->getSequence() // string(19) "3639032938181434317" 
 ```
 
+```
+$dao->getSequence(true) // returns a sequence by flipping some values.
+```
+
+### Creating a sequence without a table.
+
+* **$dao->getSequencePHP([unpredictable=false])** Returns a sequence without using a table.
+  This sequence is more efficient than $dao->getSequence but it uses a random value to deals
+  with collisions.
+  
+* If upredictable is true then it returns an unpredictable number (it flips some digits)
+
+```
+$dao->getSequencePHP() // string(19) "3639032938181434317" 
+```
+
+```
+$dao->getSequencePHP(true) // string(19) "1739032938181434311" 
+```
 
 
 
 ## Changelist
-* 3.24 2019-06-06 Added a new format of date
+* 3.25 2019-03-06 Added getSequencePHP(), getUnpredictable() and getUnpredictableInv()
+* 3.24 2019-02-06 Added a new format of date
 * 3.22 2018-12-30 Added sequence
 * 3.21 2018-12-17 Fixed a bug with parameters, set() and insert(). There are several ways to do an insertar.  Now NULL is self:null
 * 3.20 2018-12-15 Fixed bug with parameters and insert(). 
