@@ -39,7 +39,7 @@ class DaoOneEncryption
 	 * @param bool $iv if true it uses true and the each encryption is different (even for the same value) but it is not deterministic.
 	 * @param string $encMethod Example : AES-128-CTR @see http://php.net/manual/en/function.openssl-get-cipher-methods.php
 	 */
-	public function __construct(string $encPassword, string $encSalt=null, bool $iv=true, string $encMethod='AES-128-CTR')
+	public function __construct($encPassword,$encSalt=null, $iv=true, $encMethod='AES-128-CTR')
 	{
 		
 		$this->encPassword = $encPassword;
@@ -93,9 +93,10 @@ class DaoOneEncryption
 	 * @param $password
 	 * @param $salt
 	 * @param $encMethod
+	 * @param bool $iv
 	 * @throws Exception
 	 */
-	public function setEncryption($password, $salt, $encMethod)
+	public function setEncryption($password, $salt, $encMethod,$iv=true)
 	{
 		if (!extension_loaded('openssl')) {
 			$this->encEnabled = false;
@@ -105,6 +106,7 @@ class DaoOneEncryption
 			$this->encPassword = $password;
 			$this->encSalt = $salt;
 			$this->encMethod = $encMethod;
+			$this->iv=$iv;
 		}
 	}
 }
