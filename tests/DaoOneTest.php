@@ -88,6 +88,9 @@ class DaoOneTest extends TestCase
 		$this->assertEquals('2018-02-06T05:06:07.123000Z',DaoOne::dateSql2Text('2018-02-06 05:06:07.123000'));
 	}
 
+	/**
+	 * @throws Exception
+	 */
 	public function test_sequence()
 	{
 		$this->daoOne->tableSequence='testsequence';
@@ -104,9 +107,11 @@ class DaoOneTest extends TestCase
 		$this->assertLessThan(3639088446091303982,$this->daoOne->getSequencePHP(false),"sequence must be greater than 3639088446091303982");
 		$s1=$this->daoOne->getSequencePHP(false);
 		$s2=$this->daoOne->getSequencePHP(false);
-
 		$this->assertTrue($s1!=$s2,"sequence must not be the same");
-		
+		$this->daoOne->encryption->encPassword=1020304050;
+		$s1=$this->daoOne->getSequencePHP(true);
+		$s2=$this->daoOne->getSequencePHP(true);
+		$this->assertTrue($s1!=$s2,"sequence must not be the same");
 	}	
 	/**
 	 * @doesNotPerformAssertions
@@ -250,5 +255,75 @@ class DaoOneTest extends TestCase
 	    $value2=$this->daoOne->encrypt("abc_ABC/abc*abc1234567890[]{[");
 	    $this->assertTrue($value1==$value2,"Values must be equals");     
     }
+	/**
+	 * @throws Exception
+	 */
+	public function test_setEncryptionINTEGER()
+	{
+		$this->daoOne->setEncryption(12345678,'','INTEGER');
+		// 2147483640
+		$original=2147483640;
+		$value=$this->daoOne->encrypt($original);
+		$this->assertTrue(strlen($value)>3
+			,"Encrypted");
+		$this->assertEquals($original
+			,$this->daoOne->decrypt($value)
+			,"decrypt correct");
+		// 1
+		$original=1;
+		$value=$this->daoOne->encrypt($original);
+		$this->assertTrue(strlen($value)>3
+			,"Encrypted");
+		$this->assertEquals($original
+			,$this->daoOne->decrypt($value)
+			,"decrypt correct");
+		// 0
+		$original=0;
+		$value=$this->daoOne->encrypt($original);
+		$this->assertTrue(strlen($value)>3
+			,"Encrypted");
+		$this->assertEquals($original
+			,$this->daoOne->decrypt($value)
+			,"decrypt correct");		
+		
+	}
+	/**
+	 * @throws Exception
+	 */
+	public function test_setEncryptionSIMPLE()
+	{
+		$this->daoOne->setEncryption("Zoamelgusta",'','SIMPLE');
+		// 2147483640
+		$original="abc";
+		$value=$this->daoOne->encrypt($original);
+		$this->assertEquals("wrzS",$value
+			,"encrypt with problems");
+		$this->assertEquals($original
+			,$this->daoOne->decrypt($value)
+			,"decrypt with problems");
+		$original="Mary had a little lamb. Whose fleece was white as snow";
+		$value=$this->daoOne->encrypt($original);
+		$this->assertEquals("rrvh2o3NzcuV1JTNw-PV2cqM09bg1o96xsnc2NGH29_Zxr3UgeTG34fs293Vv4_C4IXf1eTq",$value
+			,"encrypt with problems");
+		$this->assertEquals($original
+			,$this->daoOne->decrypt($value)
+			,"decrypt with problems");		
+		// 1
+		$original=1222;
+		$value=$this->daoOne->encrypt($original);
+		$this->assertEquals("koyhkw==",$value
+			,"encrypt with problems");
+		$this->assertEquals($original
+			,$this->daoOne->decrypt($value)
+			,"decrypt correct");
+		// 0
+		$original=0;
+		$value=$this->daoOne->encrypt($original);
+		$this->assertEquals("kQ==",$value
+			,"encrypt with problems");
+		$this->assertEquals($original
+			,$this->daoOne->decrypt($value)
+			,"decrypt correct");
 
+	}
 }

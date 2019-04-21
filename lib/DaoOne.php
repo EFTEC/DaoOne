@@ -1,4 +1,4 @@
-<?php 
+<?php
 /** @noinspection SqlWithoutWhere */
 /** @noinspection SqlResolve */
 /** @noinspection SqlNoDataSourceInspection */
@@ -13,7 +13,7 @@ use mysqli_result;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 3.26 20190206
+ * @version 3.27 20190421
  * @package eftec
  * @author Jorge Castro Castillo
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -38,7 +38,7 @@ class DaoOne
 	 */
 	var $masks0=[2,0,4,5];
 	var $masks1=[16,13,12,11];
-	
+
 	/** @var DaoOneEncryption */
 	var $encryption=null;
 
@@ -48,7 +48,7 @@ class DaoOne
 	var $user;
 	var $pwd;
 	var $db;
-	var $charset='';
+	var $charset='utf8';
 	/** @var bool It is true if the database is connected otherwise,it's false */
 	var $isOpen=false;
 	/** @var bool If true (default), then it throws an error if happens an error. If false, then the execution continues */
@@ -128,7 +128,7 @@ class DaoOne
 	 * @param int $nodeId It is the id of the node (server). It is used for sequence. Up to 4096
 	 * @see DaoOne::connect()
 	 */
-	public function __construct($server, $user, $pwd, $db, $logFile = "",$charset='',$nodeId=1)
+	public function __construct($server, $user, $pwd, $db, $logFile = "",$charset='utf8',$nodeId=1)
 	{
 		$this->server = $server;
 		$this->user = $user;
@@ -295,7 +295,12 @@ class DaoOne
 		$sql="select next_{$this->tableSequence}({$this->nodeId}) id";
 		$r=$this->runRawQuery($sql,null,true);
 		if ($unpredictable) {
-			return $this->getUnpredictable($r[0]['id']);
+			if (PHP_INT_SIZE == 4) {
+				return $this->encryption->encryptSimple($r[0]['id']);
+			} else {
+				// $r is always a 32 bit number so it will fail in PHP 32bits
+				return $this->encryption->encryptInteger($r[0]['id']);
+			}
 		}
 		if($asFloat)
 			return floatval($r[0]['id']);
@@ -304,8 +309,9 @@ class DaoOne
 	}
 
 	/**
-	 * It ensures a collision free number if we don't do more than one operation
-	 * per 0.0001 second However, even after all, we generate a pseudo random number (0-4095)
+	 * <p>This function returns an unique sequence<p>
+	 * It ensures a collision free number only if we don't do more than one operation
+	 * per 0.0001 second However,it also adds a pseudo random number (0-4095)
 	 * so the chances of collision is 1/4095 (per two operations done every 0.0001 second).
 	 * @see \eftec\DaoOne::getSequence
 	 * @param bool $unpredictable
@@ -318,8 +324,14 @@ class DaoOne
 		$rand=(fmod($ms,1)*1000000)%4096; // 4096= 2^12 It is the millionth of seconds
 		$calc=(($timestamp-1459440000000)<<22) + ($this->nodeId<<12) + $rand;
 		usleep(1);
+	
 		if ($unpredictable) {
-			return ''.$this->getUnpredictable($calc);
+			if (PHP_INT_SIZE == 4) {
+				return '' . $this->encryption->encryptSimple($calc);
+			} else {
+				// $r is always a 32 bit number so it will fail in PHP 32bits
+				return '' . $this->encryption->encryptInteger($calc);
+			}
 		}
 		return ''.$calc;
 	}
@@ -365,6 +377,28 @@ class DaoOne
 			$number=substr_replace($number,$tmp,$init,1);
 		}
 		return $number;
+	}
+
+	/**
+	 * Create a t
+	 * @param $tableName
+	 * @param $definition
+	 * @param null $primaryKey
+	 * @return array|bool|mysqli_result
+	 * @throws Exception
+	 */
+	public function createTable($tableName,$definition,$primaryKey=null,$extra='') {
+		$sql="CREATE TABLE `{$tableName}` (";
+		foreach($definition as $key=>$type) {
+			$sql.="`$key` $type,";
+		}
+		if ($primaryKey) {
+			$sql.=" PRIMARY KEY(`$primaryKey`) ";
+		} else {
+			$sql=substr($sql,0,-1);
+		}
+		$sql.="$extra ) ENGINE=MyISAM DEFAULT CHARSET=".$this->charset;
+		return $this->runRawQuery($sql,null,true);
 	}
 	/**
 	 * Create a table for a sequence
@@ -605,29 +639,42 @@ class DaoOne
 
 	/**
 	 * It generates an inner join
+	 * Example:
+	 *          join('tablejoin on t1.field=t2.field')
+	 *          join('tablejoin','t1.field=t2.field')
 	 * @param string $sql Example "tablejoin on table1.field=tablejoin.field"
 	 * @return DaoOne
 	 * @test InstanceOf DaoOne::class,this('tablejoin on t1.field=t2.field')
 	 */
-	public function join($sql)
+	public function join($sql,$condition='')
 	{
 		if ($this->from == '') return $this->from($sql);
+		if ($condition!='') $sql="$sql on $condition";
 		$this->from .= ($sql) ? " inner join $sql " : '';
 		return $this;
 	}
 
 	/**
 	 * Macro of join.
+	 * Example:
+	 *          innerjoin('tablejoin on t1.field=t2.field')
+	 *          innerjoin('tablejoin tj on t1.field=t2.field')
+	 *          innerjoin('tablejoin','t1.field=t2.field')
 	 * @param $sql
 	 * @return DaoOne
+	 * @see \eftec\DaoOne::join
 	 */
-	public function innerjoin($sql)
+	public function innerjoin($sql,$condition='')
 	{
-		return $this->join($sql);
+		return $this->join($sql,$condition);
 	}
 
 
 	/**
+	 * Example:
+	 *      from('table')
+	 *      from('table alias')
+	 *      from('table1,table2')
 	 * @param $sql
 	 * @return DaoOne
 	 * @test InstanceOf DaoOne::class,this('table t1')
@@ -664,14 +711,15 @@ class DaoOne
 
 	/**
 	 * Example:<br>
-	 * where(['field'=>20]) // associative array with automatic type<br>
-	 * where(['field'=>['i',20]]) // associative array with type defined<br>
-	 * where(['field',20]) // array automatic type<br>
-	 * where(['field',['i',20]]) // array type defined<br>
-	 * where('field=20') // literal value<br>
-	 * where('field=?',[20]) // automatic type<br>
-	 * where('field=?',['i',20]) // type(i,d,s,b) defined<br>
-	 * where('field=?,field2=?',['i',20,'s','hello'])<br>
+	 *      where( ['field'=>20] ) // associative array with automatic type
+	 *      where( ['field'=>['i',20]] ) // associative array with type defined
+	 *      where( ['field',20] ) // array automatic type
+	 *      where (['field',['i',20]] ) // array type defined
+	 *      where('field=20') // literal value
+	 *      where('field=?',[20]) // automatic type
+	 *      where('field',[20]) // automatic type (it's the same than where('field=?',[20])
+	 *      where('field=?', ['i',20] ) // type(i,d,s,b) defined
+	 *      where('field=?,field2=?', ['i',20,'s','hello'] )
 	 * @param string|array $sql
 	 * @param array|mixed $param
 	 * @return DaoOne
@@ -681,10 +729,13 @@ class DaoOne
 	public function where($sql, $param = self::NULL)
 	{
 		if (is_string($sql)) {
-			$this->where[] = $sql;
-			if ($param === self::NULL) return $this;
+			if ($param === self::NULL) {
+				$this->where[] = $sql;
+				return $this;
+			}
 			switch (true) {
 				case !is_array($param):
+					if (strpos($sql,'?')===false) $sql=$sql.='=?'; // transform 'condition' to 'condition=?'
 					$this->whereParamType[] = $this->getType($param);
 					$this->whereParamValue['i_' . $this->whereCounter] = $param;
 					$this->whereCounter++;
@@ -701,6 +752,7 @@ class DaoOne
 						$this->whereCounter++;
 					}
 			}
+			$this->where[] = $sql;
 
 		} else {
 			$col=array();
@@ -709,7 +761,8 @@ class DaoOne
 			$this->constructParam($sql,$param,$col,$colT,$p);
 
 			foreach($col as $k=>$c) {
-				$this->where[] = "`$c`=?";
+				$c='`'.str_replace('.','`.`',$c).'`';
+				$this->where[] = "$c=?";
 				$this->whereParamType[] = $p[$k*2];
 				$this->whereParamValue['i_' . $this->whereCounter] = $p[$k*2+1];
 				$this->whereCounter++;
@@ -719,10 +772,13 @@ class DaoOne
 	}
 
 	/**
+	 * Example:
+	 *      set('field1=?,field2=?',['i',20,'s','hello'])
+	 *      set("type=?",['i',6])
+	 *      set("type=?",6) // automatic
 	 * @param string|array $sqlOrArray
 	 * @param array|mixed $param
 	 * @return DaoOne
-	 * @throws Exception
 	 * @test InstanceOf DaoOne::class,this('field1=?,field2=?',['i',20,'s','hello'])
 	 */
 	public function set($sqlOrArray, $param = self::NULL )
@@ -760,6 +816,9 @@ class DaoOne
 			}
 		}
 		return $this;
+	}
+	private function addQuote($txt) {
+		if (strpos($txt,"`")!==false) return $txt; // it has quotes.
 	}
 	/**
 	 * @param $sql
@@ -1148,11 +1207,9 @@ class DaoOne
 
 	/**
 	 * Generate and run an update in the database.
-	 * <code>
-	 * update('table',['col1','i',10,'col2','s','hello world'],['where','i',10]);
-	 * // or
-	 * update('table',['col1','i','col2','s'],[10,'hello world'],['where','i'],[10]);
-	 * </code>
+	 *      update('table',['col1','i',10,'col2','s','hello world'],['where','i',10]);
+	 *      update('table',['col1','i','col2','s'],[10,'hello world'],['where','i'],[10]);
+	 *      ->from("producttype")->set("name=?",['s','Captain-Crunch'])->where('idproducttype=?',['i',6])->update();
 	 * @param string $table
 	 * @param string[] $tableDef
 	 * @param string[]|int $value
@@ -1202,15 +1259,11 @@ class DaoOne
 	}
 	/**
 	 * Generates and execute an insert command. Example:
-	 * <code>
-	 * insert('table',['col1','i',10,'col2','s','hello world']);
-	 * // or
-	 * insert('table',['col1','i','col2','s'],[10,'hello world']);
-	 * // or
-	 * insert('table',['col1'=>'i','col2'=>'s'],['col1'=>10,'col2'=>'hello world']);
-	 * // or
-	 * ->set(..)->from('table')->insert();
-	 * </code>
+	 * Example:
+	 *      insert('table',['col1','i',10,'col2','s','hello world']);
+	 *      insert('table',['col1','i','col2','s'],[10,'hello world']);
+	 *      insert('table',['col1'=>'i','col2'=>'s'],['col1'=>10,'col2'=>'hello world']);
+	 *      ->set(..)->from('table')->insert();
 	 * @param string $table
 	 * @param string[] $tableDef
 	 * @param string[]|int $value
@@ -1252,13 +1305,11 @@ class DaoOne
 
 
 	/**
-	 * <code>
-	 * delete('table',['col1','i',10,'col2','s','hello world']);
-	 * // or
-	 * delete('table',['col1','i','col2','s'],[10,'hello world']);
-	 * // or
-	 * delete() if run on a chain $db->from('table')->where('..')->delete()
-	 * </code>
+	 * Delete a row(s) if they exists.
+	 * Example:
+	 *      delete('table',['col1','i',10,'col2','s','hello world']);
+	 *      delete('table',['col1','i','col2','s'],[10,'hello world']);
+	 *      $db->from('table')->where('..')->delete() // running on a chain
 	 * @param string $table
 	 * @param string[] $tableDefWhere
 	 * @param string[]|int $valueWhere
@@ -1453,9 +1504,11 @@ class DaoOne
 
 	//<editor-fold desc="Encryption functions" defaultstate="collapsed" >
 	/**
-	 * @param string $password
-	 * @param string $salt
-	 * @param string $encMethod . Example : AES-128-CTR See http://php.net/manual/en/function.openssl-get-cipher-methods.php
+	 * @param string|int $password <p>Use a integer if the method is INTEGER</p>
+	 * @param string $salt <p>Salt is not used by SIMPLE or INTEGER</p>
+	 * @param string $encMethod <p>Example : AES-256-CTR See http://php.net/manual/en/function.openssl-get-cipher-methods.php </p>
+	 * <p>if SIMPLE then the encryption is simplified (generates a short result)</p>
+	 * <p>if INTEGER then the encryption is even simple (generates an integer)</p>
 	 * @throws Exception
 	 * @test void this('123','somesalt','AES-128-CTR')
 	 */
@@ -1476,7 +1529,7 @@ class DaoOne
 	 * @param $data
 	 * @return bool|string
 	 */
-	
+
 	public function encrypt($data) {
 		return $this->encryption->encrypt($data);
 	}
@@ -1516,7 +1569,6 @@ class DaoOne
 			$this->getMessages()->addItem($this->db,$txt);
 			$this->debugFile($txt,'ERROR');
 		}
-
 		if ($this->throwOnError) throw new Exception($txt);
 	}
 	/**
@@ -1561,7 +1613,7 @@ class DaoOne
 			@fwrite($fp, $now->format('c')."\t".$level."\t".$txtW . "\n");
 		} catch (Exception $e) {
 		}
-		
+
 		@fclose($fp);
 	}
 
