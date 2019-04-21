@@ -51,7 +51,7 @@ class DaoOneEncryption
 	{
 		
 		$this->encPassword = $encPassword;
-		$this->encSalt = $encSalt??$encPassword; // if null the it uses the same password
+		$this->encSalt = ($encSalt===null)?$encPassword:$encSalt; // if null the it uses the same password
 		$this->iv = $iv;
 		$this->encMethod = $encMethod;
 	}
