@@ -221,6 +221,14 @@ $results = $dao->select("col1,col2")->...
 ```
 > Generates the query: **select col1,col2** ....
 
+```php
+$results = $dao->select("select * from table")->...
+```
+
+> Generates the query: **select * from table** ....
+
+
+
 ### distinct($distinct='distinct')
 Generates a select command.
 ```php
@@ -575,6 +583,7 @@ $dao->getSequencePHP(true) // string(19) "1739032938181434311"
 
 
 ## Changelist
+* 3.28 2019-05-04 Added comments. Also ->select() allows an entire query.
 * 3.27 2019-04-21 Added new methods of encryption SIMPLE (short encryption) and INTEGER (it converts and returns an integer)
 * 3.26 2019-03-06 Now Encryption has it's own class.
 * 3.25 2019-03-06 Added getSequencePHP(), getUnpredictable() and getUnpredictableInv()

@@ -173,11 +173,12 @@ class DaoOneEncryption
 	 * @return int
 	 */
 	public function encryptInteger($n) {
+		if (!is_numeric($n)) return null;
 		return (PHP_INT_SIZE == 4 ? self::encrypt32($n) : self::encrypt64($n)) ^ $this->encPassword;
 	}
 	public function decryptInteger($n) {
+		if (!is_numeric($n)) return null;
 		$n ^= $this->encPassword;
-
 		return PHP_INT_SIZE == 4 ? self::decrypt32($n) : self::decrypt64($n);
 	}
 

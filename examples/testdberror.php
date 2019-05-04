@@ -11,8 +11,8 @@ include "../vendor/autoload.php";
 
 
 $dao=new DaoOne("127.0.0.1","root","abc.123","sakilaxxxx","logdaoone.txt");
-
-$dao->throwOnError=false;
+$dao->logLevel=3;
+$dao->throwOnError=true;
 
 try {
     echo "<h1>connection error</h1>";
@@ -42,6 +42,7 @@ if (!$dao->isOpen) {
 
 
 $dao=new DaoOne("127.0.0.1","root","abc.123","sakila","logdaoone.txt");
+$dao->logLevel=3;
 try {
     echo "<h1>connection</h1>";
     $dao->connect();
@@ -147,6 +148,19 @@ try {
     echo "<h2>select (prepared) error:</h2>";
     echo $dao->lastError()."-".$e->getMessage()."<br>";
 }
+
+try {
+	echo "<h1>select (prepared with param)</h1>";
+	$sql="select * from `product33`";
+	$dao->select($sql)->where('field=?',[20])->runGen();
+
+
+} catch (Exception $e) {
+	echo "<h2>select (prepared with param) error:</h2>";
+	echo $dao->lastError()."-".$e->getMessage()."<br>";
+}
+
+
 
 // running a transaction
 try {

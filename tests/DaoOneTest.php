@@ -42,7 +42,7 @@ class DaoOneTest extends TestCase
 
     public function test_connect()
     {
-        $this->expectException(\Exception::class);
+	    $this->expectException(\Exception::class);
         $this->daoOne->connect();
     }
 
@@ -150,6 +150,34 @@ class DaoOneTest extends TestCase
     {
         $this->assertInstanceOf(DaoOne::class,$this->daoOne->select('select 1 from DUAL'));
     }
+
+	public function test_sqlGen()
+	{
+		$this->assertEquals("select 1 from DUAL",$this->daoOne->select('select 1 from DUAL')->sqlGen(true));
+
+		$this->assertEquals("select 1 from DUAL",$this->daoOne->select('select 1')->from('DUAL')->sqlGen(true));
+
+		$this->assertEquals("select 1, 2 from DUAL",$this->daoOne->select('1')->select('2')->from('DUAL')->sqlGen(true));
+
+		$this->assertEquals("select 1, 2 from DUAL",$this->daoOne->select(['1','2'])->from('DUAL')->sqlGen(true));
+
+		$this->assertEquals("select 1, 2 from DUAL where field=?"
+			,$this->daoOne
+				->select(['1','2'])
+				->from('DUAL')
+				->where('field=?',[20])
+				->sqlGen(true));
+
+		$this->assertEquals("select 1, 2 from DUAL where field=? group by 2 having field2=? order by 1"
+			,$this->daoOne
+				->select(['1','2'])
+				->from('DUAL')
+				->where('field=?',[20])
+				->order('1')
+				->group('2')
+				->having('field2=?',[4])
+				->sqlGen(true));		
+	}
 
     public function test_join()
     {

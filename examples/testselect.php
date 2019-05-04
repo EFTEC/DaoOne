@@ -44,6 +44,11 @@ try {
 
 
 try {
+	echo "<hr>toList (raw query):";
+	$results = $dao->runRawQuery("select * from producttype where name=?",['s', 'Coca-Cola'],true);
+	echo $dao->lastQuery;
+	echo Collection::generateTable($results);
+	
     echo "<hr>toList:";
     $results = $dao->select("*")->from("producttype")
         ->where('name=?', ['s', 'Coca-Cola'])
