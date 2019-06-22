@@ -36,6 +36,8 @@ try {
     $dao->runRawQuery('insert into `typetable`(`type`,`name`) values(?,?)'
         ,array('i',2,'s','Yummy'));
     echo $dao->lastQuery."<br>";
+    echo $dao->affected_rows();
+    die(1);
 
     // $dao->insert("producttype",['idproducttype','i','name','s','type','i'],[1,'Coca-Cola',1]);
     $dao->from("producttype")

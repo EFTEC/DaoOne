@@ -13,7 +13,7 @@ use mysqli_result;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 3.28 20190504
+ * @version 3.29 20190622
  * @package eftec
  * @author Jorge Castro Castillo
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -76,7 +76,7 @@ class DaoOne
 	var $lastQuery;
 	var $lastParam=[];
 
-
+    private $affected_rows;
 
 
 	/**
@@ -1240,6 +1240,7 @@ class DaoOne
 		if ($this->genSqlFields) {
 			$this->lastSqlFields=$this->obtainSqlFields($rows);
 		}
+		$this->affected_rows=$this->conn1->affected_rows;
 		$stmt->close();
 		if ($returnArray && $rows instanceof \mysqli_result) {
 			return $rows->fetch_all(MYSQLI_ASSOC);
@@ -1258,13 +1259,14 @@ class DaoOne
 		return $this->conn1->insert_id;
 	}
 	/**
-	 * Returns the number of affected rows.
-	 * @return mixed
+	 * Returns the number of affected rows in a previous MySQL operation
+	 * @return mixed 
+     * @see https://www.php.net/manual/en/mysqli.affected-rows.php            
 	 */
 	public function affected_rows()
 	{
 		if (!$this->isOpen) return -1;
-		return $this->conn1->affected_rows;
+		return $this->affected_rows;
 	}
 
 	/**
