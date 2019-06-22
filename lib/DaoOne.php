@@ -42,8 +42,7 @@ class DaoOne
 
 	/** @var DaoOneEncryption */
 	var $encryption=null;
-
-
+	
 	/** @var string server ip. Ex. 127.0.0.1 */
 	var $server;
 	var $user;
