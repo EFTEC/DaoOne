@@ -4,10 +4,15 @@ DaoOne. It's a simple wrapper for Mysqli
 
 This library is as fast as possible. Most of the operations are simple string/array managements.
 
+> Note: This release is moved to https://github.com/EFTEC/PdoOne   
+> PdoOne does the same job but it works with PDO library (instead of MySQLi).
+> Right now PdoOne works with Mysqli and SqlSrv but it has many other features that will
+> not be present on DaoOne
+
 [![Build Status](https://travis-ci.org/EFTEC/DaoOne.svg?branch=master)](https://travis-ci.org/EFTEC/DaoOne)
 [![Packagist](https://img.shields.io/packagist/v/eftec/daoone.svg)](https://packagist.org/packages/eftec/daoone)
 [![Total Downloads](https://poser.pugx.org/eftec/daoone/downloads)](https://packagist.org/packages/eftec/daoone)
-[![Maintenance](https://img.shields.io/maintenance/yes/2019.svg)]()
+[![Maintenance](https://img.shields.io/maintenance/yes/2020.svg)]()
 [![composer](https://img.shields.io/badge/composer-%3E1.6-blue.svg)]()
 [![php](https://img.shields.io/badge/php->5.6-green.svg)]()
 [![php](https://img.shields.io/badge/php-7.x-green.svg)]()
