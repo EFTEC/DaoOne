@@ -7,13 +7,14 @@ namespace eftec;
 
 use DateTime;
 use Exception;
+use mysqli;
 use mysqli_result;
-
+use mysqli_stmt;
 
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 3.29 20190622
+ * @version 3.29 20200213
  * @package eftec
  * @author Jorge Castro Castillo
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
@@ -54,7 +55,7 @@ class DaoOne
 	/** @var bool If true (default), then it throws an error if happens an error. If false, then the execution continues */
 	var $throwOnError=true;
 
-	/** @var  \mysqli */
+	/** @var  mysqli */
 	var $conn1;
 	//</editor-fold>
 	/** @var  bool */
@@ -194,7 +195,7 @@ class DaoOne
 			if ($this->logLevel>=2) {
 				$this->storeInfo("connecting to {$this->server} {$this->user}/*** {$this->db}");
 			}
-			$this->conn1 = new \mysqli($this->server, $this->user, $this->pwd, $this->db);
+			$this->conn1 = new mysqli($this->server, $this->user, $this->pwd, $this->db);
 			if ($this->charset!='') {
 				$this->setCharset($this->charset);
 			}
@@ -756,7 +757,7 @@ class DaoOne
 			}
 			switch (true) {
 				case !is_array($param):
-					if (strpos($sql,'?')===false) $sql=$sql.='=?'; // transform 'condition' to 'condition=?'
+					if (strpos($sql,'?')===false) $sql.='=?'; // transform 'condition' to 'condition=?'
 					$this->whereParamType[] = $this->getType($param);
 					$this->whereParamValue['i_' . $this->whereCounter] = $param;
 					$this->whereCounter++;
@@ -792,16 +793,19 @@ class DaoOne
 		return $this;
 	}
 
-	/**
-	 * Example:
-	 *      set('field1=?,field2=?',['i',20,'s','hello'])
-	 *      set("type=?",['i',6])
-	 *      set("type=?",6) // automatic
-	 * @param string|array $sqlOrArray
-	 * @param array|mixed $param
-	 * @return DaoOne
-	 * @test InstanceOf DaoOne::class,this('field1=?,field2=?',['i',20,'s','hello'])
-	 */
+    /**
+     * Example:
+     *      set('field1=?,field2=?',['i',20,'s','hello'])
+     *      set("type=?",['i',6])
+     *      set("type=?",6) // automatic
+     *
+     * @param string|array $sqlOrArray
+     * @param array|mixed  $param
+     *
+     * @return DaoOne
+     * @test InstanceOf DaoOne::class,this('field1=?,field2=?',['i',20,'s','hello'])
+     * @throws Exception
+     */
 	public function set($sqlOrArray, $param = self::NULL )
 	{
 		if (count($this->where)) {
@@ -932,7 +936,7 @@ class DaoOne
 	public function runGen($returnArray = true)
 	{
 		$sql = $this->sqlGen();
-		/** @var \mysqli_stmt $stmt */
+		/** @var mysqli_stmt $stmt */
 		$stmt = $this->prepare($sql);
 		if ($stmt===null) {
 			return false;
@@ -1039,7 +1043,7 @@ class DaoOne
 	/**
 	 * Prepare a query. It returns a mysqli statement.
 	 * @param $query string
-	 * @return \mysqli_stmt returns the statement if correct otherwise null
+	 * @return mysqli_stmt returns the statement if correct otherwise null
 	 * @throws Exception
 	 */
 	public function prepare($query)
@@ -1073,7 +1077,7 @@ class DaoOne
 	 * Run a prepared statement.
 	 * <br><b>Example</b>:<br>
 	 *      $con->runQuery($con->prepare('select * from table'));
-	 * @param $stmt \mysqli_stmt
+	 * @param $stmt mysqli_stmt
 	 * @return bool returns true if the operation is correct, otherwise false
 	 * @throws Exception
 	 * @test equals true,$this->daoOne->runQuery($this->daoOne->prepare('select 1 from dual'))
@@ -1093,6 +1097,13 @@ class DaoOne
 		}
 		return true;
 	}
+
+    /**
+     * It resets the pipeline
+     */
+	public function reset() {
+	    $this->builderReset();
+    }
 
 	/**
 	 * It reset the parameters used to Build Query.

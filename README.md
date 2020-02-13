@@ -18,6 +18,67 @@ This library is as fast as possible. Most of the operations are simple string/ar
 [![php](https://img.shields.io/badge/php-7.x-green.svg)]()
 [![CocoaPods](https://img.shields.io/badge/docs-70%25-yellow.svg)]()
 
+# Migrating to eftec/PdoOne
+
+## Adding the dependency
+
+Install via composer
+
+> composer require eftec/pdoone
+
+This library could works in tandem with eftec/daoone.
+
+## Changing the library
+
+Change the class, instead of use eftec/daoone -> eftec/pdoone
+
+Example:
+
+Before:
+```php
+/** @var \eftec\DaoOne $db */
+$db=null;
+```
+
+After:
+```php
+/** @var \eftec\PdoOne $db */
+$db=null;
+```
+
+## Constructor
+
+Before:
+```php
+$db=new DaoOne('127.0.0.1','root','abc.123','sakila');
+```
+After:
+```php
+$db=new DaoOne('mysql','127.0.0.1','root','abc.123','sakila'); // check 'mysql'
+```
+
+## Operators 
+
+If we use DaoOne::runGen(false), then we must check the result. runGen (DaoOne) returns
+ a mysqli_result object. runGen (PdoOne) returns a pdostatement object.
+
+Before:
+```php
+$result=$db->runGen(false); // it returns a mysqli_result
+$result->fetch_assoc();
+$result->free_result();
+```
+
+After:
+```php
+$result=$db->runGen(false); // it returns a pdostatement
+$result->fetch( PDO::FETCH_ASSOC);
+$result=null;
+```
+
+
+# How it works?
+
 Turn this 
 
 ```$stmt = $mysqli->prepare("SELECT * FROM myTable WHERE name = ?");
@@ -588,6 +649,8 @@ $dao->getSequencePHP(true) // string(19) "1739032938181434311"
 
 
 ## Changelist
+
+* 3.29 2020-02-13 Some cleanup.
 * 3.28 2019-05-04 Added comments. Also ->select() allows an entire query.
 * 3.27 2019-04-21 Added new methods of encryption SIMPLE (short encryption) and INTEGER (it converts and returns an integer)
 * 3.26 2019-03-06 Now Encryption has it's own class.
