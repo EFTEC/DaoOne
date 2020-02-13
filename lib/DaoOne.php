@@ -14,7 +14,7 @@ use mysqli_stmt;
 /**
  * Class DaoOne
  * This class wrappes MySQLi but it could be used for another framework/library.
- * @version 3.29 20200213
+ * @version 3.30 20200213
  * @package eftec
  * @author Jorge Castro Castillo
  * @copyright (c) Jorge Castro C. MIT License  https://github.com/EFTEC/DaoOne
